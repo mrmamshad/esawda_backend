@@ -1,0 +1,140 @@
+{
+  "info": {
+    "name": "offersale. API v1",
+    "description": "Complete REST API for the offersale. classified ads platform. All endpoints under /api/v1. Auth via Sanctum bearer tokens (Authorization: Bearer {{token}}).\n\nUniform envelope: { data, meta?, links? } for success, { error: { code, message, fields? } } for failures.\n\nFilter grammar (all list endpoints):\n  ?filter[field]=value\n  ?filter[field][gte|lte|gt|lt|in|ne|like]=value\n  ?filter[custom][fieldId]=value\n  ?sort=-created_at,price\n  ?q=needle\n  ?per_page=24&page=2\n  ?include=user,category",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8100/api/v1" },
+    { "key": "token",    "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "event": [
+    { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["// no-op"] } }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        { "name": "Register", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": { "mode": "raw", "raw": "{\n  \"username\": \"alice\",\n  \"email\": \"alice@example.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"name\": \"Alice\"\n}" },
+          "url": "{{base_url}}/auth/register" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript",
+            "exec": ["const j = pm.response.json(); if(j.data && j.data.token) pm.collectionVariables.set('token', j.data.token);"] } }] },
+        { "name": "Login", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": { "mode": "raw", "raw": "{ \"identifier\": \"alice@example.com\", \"password\": \"password123\" }" },
+          "url": "{{base_url}}/auth/login" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript",
+            "exec": ["const j = pm.response.json(); if(j.data && j.data.token) pm.collectionVariables.set('token', j.data.token);"] } }] },
+        { "name": "Me",          "request": { "method": "GET",  "url": "{{base_url}}/auth/me" } },
+        { "name": "Logout",      "request": { "method": "POST", "url": "{{base_url}}/auth/logout" } },
+        { "name": "Logout All",  "request": { "method": "POST", "url": "{{base_url}}/auth/logout-all" } },
+        { "name": "Forgot",      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": { "mode": "raw", "raw": "{ \"email\": \"alice@example.com\" }" }, "url": "{{base_url}}/auth/forgot" } },
+        { "name": "Reset",       "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": { "mode": "raw", "raw": "{ \"token\": \"REPLACE_ME\", \"password\": \"newpass123\", \"password_confirmation\": \"newpass123\" }" },
+          "url": "{{base_url}}/auth/reset" } }
+      ]
+    },
+    {
+      "name": "Taxonomy",
+      "item": [
+        { "name": "Categories",           "request": { "method": "GET", "url": "{{base_url}}/categories?with_counts=true&with_subs=true" } },
+        { "name": "Category (by slug)",   "request": { "method": "GET", "url": "{{base_url}}/categories/vehicles" } },
+        { "name": "SubCategories",        "request": { "method": "GET", "url": "{{base_url}}/subcategories?category=1" } },
+        { "name": "Countries",            "request": { "method": "GET", "url": "{{base_url}}/countries" } },
+        { "name": "Cities (by country)",  "request": { "method": "GET", "url": "{{base_url}}/countries/BD/cities?q=dhaka" } },
+        { "name": "Currencies",           "request": { "method": "GET", "url": "{{base_url}}/currencies" } },
+        { "name": "Languages",            "request": { "method": "GET", "url": "{{base_url}}/languages" } },
+        { "name": "Settings",             "request": { "method": "GET", "url": "{{base_url}}/settings" } },
+        { "name": "Filter schema",        "request": { "method": "GET", "url": "{{base_url}}/filter-schema?category=vehicles" } }
+      ]
+    },
+    {
+      "name": "Ads (public read)",
+      "item": [
+        { "name": "Browse",               "request": { "method": "GET", "url": "{{base_url}}/ads?per_page=12&sort=-created_at&include=category,sub_category,user" } },
+        { "name": "Browse (filtered)",    "request": { "method": "GET",
+          "url": "{{base_url}}/ads?filter[category]=1&filter[price][gte]=1000&filter[price][lte]=50000&filter[city]=Dhaka&q=bmw" } },
+        { "name": "Browse (custom filter)","request":{ "method": "GET", "url": "{{base_url}}/ads?filter[custom][1]=Petrol&filter[custom][2][gte]=2018" } },
+        { "name": "Ad by id-slug",        "request": { "method": "GET", "url": "{{base_url}}/ads/1-test-product-1" } },
+        { "name": "Featured",             "request": { "method": "GET", "url": "{{base_url}}/ads/featured?limit=6" } },
+        { "name": "Similar",              "request": { "method": "GET", "url": "{{base_url}}/ads/1/similar?limit=6" } },
+        { "name": "Search suggest",       "request": { "method": "GET", "url": "{{base_url}}/ads/search-suggest?q=bmw" } },
+        { "name": "Reviews",              "request": { "method": "GET", "url": "{{base_url}}/ads/1/reviews" } }
+      ]
+    },
+    {
+      "name": "Ads (owner write)",
+      "item": [
+        { "name": "Create Ad",            "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": { "mode": "raw", "raw": "{\n  \"title\": \"Toyota Corolla 2018\",\n  \"description\": \"Well maintained sedan, single owner.\",\n  \"category\": 1,\n  \"sub_category\": 2,\n  \"price\": 15000,\n  \"phone\": \"+8801700000000\",\n  \"city\": \"Dhaka\",\n  \"country\": \"BD\",\n  \"tags\": [\"toyota\", \"sedan\"]\n}" },
+          "url": "{{base_url}}/ads" } },
+        { "name": "Update Ad",            "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": { "mode": "raw", "raw": "{ \"price\": 14500, \"negotiable\": true }" },
+          "url": "{{base_url}}/ads/1" } },
+        { "name": "Add Images (multipart)","request": { "method": "POST",
+          "body": { "mode": "formdata", "formdata": [{ "key": "images[]", "type": "file", "src": [] }] },
+          "url": "{{base_url}}/ads/1/images" } },
+        { "name": "Delete Image",         "request": { "method": "DELETE", "url": "{{base_url}}/ads/1/images/ad_1_ABCD.jpg" } },
+        { "name": "Hide",                 "request": { "method": "POST", "url": "{{base_url}}/ads/1/hide" } },
+        { "name": "Unhide",               "request": { "method": "POST", "url": "{{base_url}}/ads/1/unhide" } },
+        { "name": "Resubmit",             "request": { "method": "POST", "url": "{{base_url}}/ads/1/resubmit" } },
+        { "name": "Delete Ad",            "request": { "method": "DELETE", "url": "{{base_url}}/ads/1" } },
+        { "name": "My Ads",               "request": { "method": "GET", "url": "{{base_url}}/me/ads?status=active&per_page=12" } }
+      ]
+    },
+    {
+      "name": "Sellers",
+      "item": [
+        { "name": "Seller profile",       "request": { "method": "GET", "url": "{{base_url}}/sellers/hasnat5" } },
+        { "name": "Seller ads",           "request": { "method": "GET", "url": "{{base_url}}/sellers/hasnat5/ads?per_page=12" } },
+        { "name": "Seller reviews",       "request": { "method": "GET", "url": "{{base_url}}/sellers/hasnat5/reviews" } }
+      ]
+    },
+    {
+      "name": "Favourites",
+      "item": [
+        { "name": "My favourites",        "request": { "method": "GET",    "url": "{{base_url}}/me/favourites" } },
+        { "name": "Add favourite",        "request": { "method": "POST",   "url": "{{base_url}}/ads/1/favourite" } },
+        { "name": "Remove favourite",     "request": { "method": "DELETE", "url": "{{base_url}}/ads/1/favourite" } }
+      ]
+    },
+    {
+      "name": "Reviews",
+      "item": [
+        { "name": "Post review",          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": { "mode": "raw", "raw": "{ \"rating\": 5, \"comment\": \"Excellent seller, smooth transaction.\" }" },
+          "url": "{{base_url}}/ads/1/reviews" } },
+        { "name": "Delete review",        "request": { "method": "DELETE", "url": "{{base_url}}/reviews/1" } }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        { "name": "Threads",              "request": { "method": "GET",  "url": "{{base_url}}/me/threads" } },
+        { "name": "Unread count",         "request": { "method": "GET",  "url": "{{base_url}}/me/threads/unread-count" } },
+        { "name": "Thread with user",    "request": { "method": "GET",  "url": "{{base_url}}/me/threads/5?per_page=30" } },
+        { "name": "Mark read",            "request": { "method": "POST", "url": "{{base_url}}/me/threads/5/read" } },
+        { "name": "Send message",         "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": { "mode": "raw", "raw": "{ \"to\": 5, \"body\": \"Hi, is your Toyota still available?\", \"post_id\": 1 }" },
+          "url": "{{base_url}}/messages" } }
+      ]
+    },
+    {
+      "name": "Content",
+      "item": [
+        { "name": "Pages",                "request": { "method": "GET", "url": "{{base_url}}/pages?lang=en&per_page=20" } },
+        { "name": "Page by slug",         "request": { "method": "GET", "url": "{{base_url}}/pages/about" } },
+        { "name": "FAQs",                 "request": { "method": "GET", "url": "{{base_url}}/faqs?lang=en" } },
+        { "name": "Testimonials",         "request": { "method": "GET", "url": "{{base_url}}/testimonials?limit=12" } },
+        { "name": "Plans",                "request": { "method": "GET", "url": "{{base_url}}/plans" } },
+        { "name": "Blogs",                "request": { "method": "GET", "url": "{{base_url}}/blogs?per_page=9&q=classified" } },
+        { "name": "Blog by id-slug",      "request": { "method": "GET", "url": "{{base_url}}/blogs/1-first-blog" } }
+      ]
+    }
+  ]
+}

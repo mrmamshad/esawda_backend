@@ -1,0 +1,95 @@
+## Laravel
+/.phpunit.cache
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/storage/app/public/*
+!/storage/app/public/.gitignore
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+/vendor
+.env
+.env.*
+!.env.example
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/auth.json
+
+## Editors / OS
+/.fleet
+/.idea
+/.nova
+/.vscode
+/.zed
+.DS_Store
+Thumbs.db
+
+## Next.js frontend
+frontend/node_modules
+frontend/.next
+frontend/out
+frontend/build
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+frontend/tsconfig.tsbuildinfo
+frontend/next-env.d.ts
+
+## Databases & backups
+database/database.sqlite
+database/*.sqlite-journal
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+*.dump
+
+## Uploads & user data
+/public/uploads
+/public/storage/logo
+/public/storage/products
+/public/storage/profile
+/public/storage/banner
+/public/storage/user_files
+/public/storage/site
+/public/storage/blog
+/public/storage/testimonials
+
+## Debug / test artefacts
+/.playwright-mcp
+/stitch-assets
+/.php-conf
+/bin
+*.png
+*.jpg
+*.jpeg
+!frontend/public/*.png
+!frontend/public/*.jpg
+!frontend/public/*.jpeg
+!public/favicon.ico
+!public/robots.txt
+
+## Logs & tmp
+*.log
+/tmp/
+tmp_rovodev_*
+
+## Exclude Next.js frontend (separate repo esawda)
+/frontend
