@@ -8,6 +8,7 @@ use App\Http\Resources\V1\SubCategoryResource;
 use App\Models\Category;
 use App\Models\SubCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -24,32 +25,30 @@ class CategoryController extends Controller
         $withCounts = filter_var($request->query('with_counts', 'true'), FILTER_VALIDATE_BOOL);
         $withSubs   = filter_var($request->query('with_subs',   'true'), FILTER_VALIDATE_BOOL);
 
-        $query = Category::orderBy('cat_order');
+        // Read-heavy public taxonomy. The per-row correlated COUNT subqueries
+        // become a handful of grouped COUNT()s, and the whole result is cached
+        // for 5 minutes via the configured CACHE_STORE (file in dev, redis in
+        // prod) — not a DB hit per request.
+        $key = 'categories.' . (int) $withCounts . '.' . (int) $withSubs;
 
-        if ($withSubs) {
-            $query->with(['subCategories' => function ($q) use ($withCounts) {
-                $q->orderBy('cat_order');
-                if ($withCounts) $q->select('*')->selectSub(
-                    DB::table('product')
-                      ->selectRaw('count(*)')
-                      ->whereColumn('sub_category', 'catagory_sub.sub_cat_id')
-                      ->where('status', 'active')->where('hide', '0'),
-                    'ads_count'
-                );
-            }]);
-        }
+        return Cache::remember($key, 300, function () use ($withCounts, $withSubs) {
+            $query = Category::orderBy('cat_order');
 
-        if ($withCounts) {
-            $query->selectSub(
-                DB::table('product')
-                  ->selectRaw('count(*)')
-                  ->whereColumn('category', 'catagory_main.cat_id')
-                  ->where('status', 'active')->where('hide', '0'),
-                'ads_count'
-            )->addSelect('catagory_main.*');
-        }
+            if ($withSubs) {
+                $query->with(['subCategories' => function ($q) use ($withCounts) {
+                    $q->orderBy('cat_order');
+                    // group-by COUNT per category, aliased to the ads_count the
+                    // resource expects (replaces the per-row correlated subquery)
+                    if ($withCounts) $q->withCount(['posts as ads_count' => fn ($a) => $a->active()]);
+                }]);
+            }
 
-        return $this->ok(CategoryResource::collection($query->get()));
+            if ($withCounts) {
+                $query->withCount(['posts as ads_count' => fn ($a) => $a->active()]);
+            }
+
+            return CategoryResource::collection($query->get());
+        });
     }
 
     public function show(string $slug)
