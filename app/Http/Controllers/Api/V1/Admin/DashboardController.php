@@ -8,6 +8,7 @@ use App\Models\Post;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -25,55 +26,61 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $now       = now();
-        $period    = 30;
-        $prevStart = $now->copy()->subDays($period * 2)->startOfDay();
-        $currStart = $now->copy()->subDays($period)->startOfDay();
+        // The dashboard aggregates ~30 queries across 4 tables. Admin-only,
+        // recomputed on demand → cache the whole payload for 5 minutes.
+        return $this->ok(Cache::remember('admin.dashboard', 300, function () {
+            $now       = now();
+            $period    = 30;
+            $prevStart = $now->copy()->subDays($period * 2)->startOfDay();
+            $currStart = $now->copy()->subDays($period)->startOfDay();
 
-        // ── Deltas ─────────────────────────────────────────────────
-        $revCurr = (float) Transaction::where('status', 'success')->where('created_at', '>=', $currStart)->sum('amount');
-        $revPrev = (float) Transaction::where('status', 'success')->whereBetween('created_at', [$prevStart, $currStart])->sum('amount');
-        $txCurr  = (int) Transaction::where('created_at', '>=', $currStart)->count();
-        $txPrev  = (int) Transaction::whereBetween('created_at', [$prevStart, $currStart])->count();
-        $usrCurr = (int) User::where('created_at', '>=', $currStart)->count();
-        $usrPrev = (int) User::whereBetween('created_at', [$prevStart, $currStart])->count();
-        $adCurr  = (int) Post::where('created_at', '>=', $currStart)->count();
-        $adPrev  = (int) Post::whereBetween('created_at', [$prevStart, $currStart])->count();
+            // ── Deltas ─────────────────────────────────────────────────
+            $revCurr = (float) Transaction::where('status', 'success')->where('created_at', '>=', $currStart)->sum('amount');
+            $revPrev = (float) Transaction::where('status', 'success')->whereBetween('created_at', [$prevStart, $currStart])->sum('amount');
+            $txCurr  = (int) Transaction::where('created_at', '>=', $currStart)->count();
+            $txPrev  = (int) Transaction::whereBetween('created_at', [$prevStart, $currStart])->count();
+            $usrCurr = (int) User::where('created_at', '>=', $currStart)->count();
+            $usrPrev = (int) User::whereBetween('created_at', [$prevStart, $currStart])->count();
+            $adCurr  = (int) Post::where('created_at', '>=', $currStart)->count();
+            $adPrev  = (int) Post::whereBetween('created_at', [$prevStart, $currStart])->count();
 
-        $delta = fn ($curr, $prev) => $prev > 0 ? (($curr - $prev) / $prev) * 100 : ($curr > 0 ? 100 : 0);
+            $delta = fn ($curr, $prev) => $prev > 0 ? (($curr - $prev) / $prev) * 100 : ($curr > 0 ? 100 : 0);
 
-        return $this->ok([
-            'counts' => [
-                'users'          => User::count(),
-                'ads_total'      => Post::count(),
-                'ads_active'     => Post::where('status', 'active')->where('hide', '0')->count(),
-                'ads_pending'    => Post::where('status', 'pending')->count(),
-                'ads_expired'    => Post::where('status', 'expire')->count(),
-                'tx_total'       => Transaction::count(),
-                'tx_success'     => Transaction::where('status', 'success')->count(),
-                'revenue_total'  => (float) Transaction::where('status', 'success')->sum('amount'),
-            ],
-            'trend' => [
-                'users_delta'    => round($delta($usrCurr, $usrPrev), 1),
-                'ads_delta'      => round($delta($adCurr,  $adPrev),  1),
-                'revenue_delta'  => round($delta($revCurr, $revPrev), 1),
-                'tx_delta'       => round($delta($txCurr,  $txPrev),  1),
-            ],
-            'recent' => [
-                'ads'          => Post::orderByDesc('id')->limit(6)->get(),
-                'users'        => User::orderByDesc('id')->limit(6)->get(),
-                'transactions' => Transaction::orderByDesc('id')->limit(6)->get(),
-            ],
-            'revenue_series' => [
-                '7D'  => $this->salesSeries(7),
-                '30D' => $this->salesSeries(30),
-                '90D' => $this->salesSeries(90),
-                '1Y'  => $this->salesSeriesMonthly(12),
-            ],
-            'category_breakdown' => $this->categoryBreakdown(),
-            'top_categories'     => $this->topCategories(),
-            'user_growth'        => $this->userGrowthSeries(30),
-        ]);
+            return [
+                'counts' => [
+                    'users'          => User::count(),
+                    'ads_total'      => Post::count(),
+                    'ads_active'     => Post::where('status', 'active')->where('hide', '0')->count(),
+                    'ads_pending'    => Post::where('status', 'pending')->count(),
+                    'ads_expired'    => Post::where('status', 'expire')->count(),
+                    'tx_total'       => Transaction::count(),
+                    'tx_success'     => Transaction::where('status', 'success')->count(),
+                    'revenue_total'  => (float) Transaction::where('status', 'success')->sum('amount'),
+                ],
+                'trend' => [
+                    'users_delta'    => round($delta($usrCurr, $usrPrev), 1),
+                    'ads_delta'      => round($delta($adCurr,  $adPrev),  1),
+                    'revenue_delta'  => round($delta($revCurr, $revPrev), 1),
+                    'tx_delta'       => round($delta($txCurr,  $txPrev),  1),
+                ],
+                'recent' => [
+                    // Column-slimmed — avoid pulling 64KB TEXT description
+                    // rows into the dashboard list.
+                    'ads'          => Post::orderByDesc('id')->limit(6)->get(['id', 'product_name', 'price', 'status', 'created_at']),
+                    'users'        => User::orderByDesc('id')->limit(6)->get(['id', 'name', 'email', 'created_at']),
+                    'transactions' => Transaction::orderByDesc('id')->limit(6)->get(['id', 'seller_id', 'amount', 'status', 'created_at']),
+                ],
+                'revenue_series' => [
+                    '7D'  => $this->salesSeries(7),
+                    '30D' => $this->salesSeries(30),
+                    '90D' => $this->salesSeries(90),
+                    '1Y'  => $this->salesSeriesMonthly(12),
+                ],
+                'category_breakdown' => $this->categoryBreakdown(),
+                'top_categories'     => $this->topCategories(),
+                'user_growth'        => $this->userGrowthSeries(30),
+            ];
+        }));
     }
 
     /** Daily revenue for the last N days, zero-filled. */
