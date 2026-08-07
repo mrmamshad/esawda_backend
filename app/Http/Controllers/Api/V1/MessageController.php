@@ -40,6 +40,11 @@ class MessageController extends Controller
             })
             ->orderByDesc('message_date')
             ->orderByDesc('message_id')
+            // Sidebar only shows a bounded set of recent threads; fetching
+            // the entire conversation history (unbounded OR scan) just to
+            // group the latest is wasteful as a mailbox grows. Cap to the
+            // most recent rows; grouping still yields latest-per-thread.
+            ->limit(300)
             ->get();
 
         // Group by canonical thread key.
