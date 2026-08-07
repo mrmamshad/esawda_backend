@@ -30,7 +30,7 @@ class CountryController extends Controller
                      ->where('active', 1)
                      ->orderBy('name');
             if ($needle) $q->where('name', 'like', "%{$needle}%");
-            return $q->paginate($perPage)->items();
+            return $q->paginate($perPage);
         });
 
         return $this->ok(CityResource::collection($cities));
