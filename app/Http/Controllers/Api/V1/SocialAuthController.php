@@ -43,7 +43,7 @@ class SocialAuthController extends Controller
         // of which social provider they last used.
         $user = User::where('email', $profile['email'])->first();
         if (! $user) {
-            $user = User::create([
+            $user = User::forceCreate([
                 'username'      => $this->uniqueUsername($profile['email']),
                 'email'         => $profile['email'],
                 'name'          => $profile['name'] ?? Str::before($profile['email'], '@'),

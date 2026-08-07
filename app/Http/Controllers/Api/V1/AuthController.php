@@ -28,7 +28,7 @@ class AuthController extends Controller
     {
         $data = $request->validated();
 
-        $user = User::create([
+        $user = User::forceCreate([
             'username'      => $data['username'],
             'email'         => $data['email'],
             'name'          => $data['name']  ?? $data['username'],
