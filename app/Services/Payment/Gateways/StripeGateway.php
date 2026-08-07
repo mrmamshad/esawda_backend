@@ -60,7 +60,9 @@ class StripeGateway extends AbstractGateway
                     $tx->status = 'failed';
                 }
             } else {
-                $tx->status = 'success';
+                // No API key configured → cannot verify server-side. Fail
+                // closed; never mark success from an unverified payload.
+                $tx->status = 'failed';
             }
         } else {
             $tx->status = 'cancel';

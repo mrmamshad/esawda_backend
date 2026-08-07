@@ -100,7 +100,10 @@ class SSLCommerzGateway extends AbstractGateway
         /** @var Transaction $tx */
         $tx = Transaction::where('payment_id', $tranId)->firstOrFail();
 
-        if (in_array($status, ['VALID', 'VALIDATED'], true) && $valId !== '' && $this->validateWithApi($valId)) {
+        // Success only when SSLCommerz's validation API confirms the
+        // val_id AND the paid amount matches our local record. Never trust
+        // the browser-posted status or val_id alone (amount-tampering guard).
+        if ($valId !== '' && $this->validateWithApi($valId, $tx)) {
             $tx->status = 'success';
         } elseif ($status === 'FAILED') {
             $tx->status = 'failed';
@@ -122,7 +125,12 @@ class SSLCommerzGateway extends AbstractGateway
         return $tx->status === 'success';
     }
 
-    private function validateWithApi(string $valId): bool
+    /**
+     * Validate a val_id with SSLCommerz's server API and confirm the paid
+     * amount matches the local transaction. Returns false unless BOTH the
+     * payment status is VALID/VALIDATED AND the amounts agree.
+     */
+    private function validateWithApi(string $valId, Transaction $tx): bool
     {
         $base     = (string) config('sslcommerz.api_domain');
         $storeId  = (string) config('sslcommerz.store_id');
@@ -137,7 +145,14 @@ class SSLCommerzGateway extends AbstractGateway
             ]);
             if (! $res->successful()) return false;
             $data = $res->json();
-            return in_array(($data['status'] ?? ''), ['VALID', 'VALIDATED'], true);
+
+            $validStatus = in_array(($data['status'] ?? ''), ['VALID', 'VALIDATED'], true);
+            if (! $validStatus) return false;
+
+            // Amount tampering check — the val_id may be real but belong to a
+            // smaller/other payment; reject unless it paid exactly our amount.
+            $paidAmount = (float) ($data['amount'] ?? 0);
+            return abs($paidAmount - (float) $tx->amount) < 0.01;
         } catch (\Throwable $e) {
             Log::error('SSLCommerz validate exception: ' . $e->getMessage());
             return false;

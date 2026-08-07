@@ -80,7 +80,9 @@ class PaypalGateway extends AbstractGateway
                 $tx->status = 'failed';
             }
         } elseif (($payload['result'] ?? '') === 'success') {
-            $tx->status = 'success'; // dev sandbox stub
+            // No client_id configured → cannot verify via PayPal API. Fail
+            // closed; never mark success from an unverified payload.
+            $tx->status = 'failed';
         } else {
             $tx->status = 'cancel';
         }
