@@ -18,8 +18,8 @@ class SellerMiniResource extends BaseResource
             'avatar_url' => $base . ($this->image ?: 'default_user.png'),
             'online'     => $this->bool($this->online),
             'member_since' => optional($this->created_at)->toIso8601String(),
-            'phone'      => $this->phone,
-            'whatsapp'   => $this->whatsapp ?? $this->phone,
+            'phone'      => $this->bool($this->hide_phone) ? null : $this->phone,
+            'whatsapp'   => $this->bool($this->hide_phone) ? null : ($this->whatsapp ?? $this->phone),
             'socials'    => [
                 'facebook'  => $this->facebook,
                 'twitter'   => $this->twitter,

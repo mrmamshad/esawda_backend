@@ -42,7 +42,12 @@ class UserAdminController extends Controller
             'status'    => ['sometimes', 'in:0,1'],
         ]);
         $user = User::findOrFail($id);
-        $user->forceFill($data + ['updated_at' => now()])->save();
+
+        // Explicit, allow-listed field mapping. `user_type` is gated to the
+        // enum already validated above (`in:user,admin`); `group_id`/`status`
+        // are pinned to the small validated set — never a raw passthrough.
+        $safe = array_intersect_key($data, array_flip(['name', 'email', 'phone', 'user_type', 'group_id', 'status']));
+        $user->fill($safe)->save();
         return $this->ok($user->fresh());
     }
 

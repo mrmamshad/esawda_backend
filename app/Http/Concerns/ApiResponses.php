@@ -32,6 +32,45 @@ trait ApiResponses
         return response()->json(null, 204);
     }
 
+    /**
+     * Attach the Sanctum token as an HttpOnly + Secure cookie on the
+     * response so the Next.js server can forward it (apiFromServer) while
+     * browser JS can't read it. `Secure` is only set when the request was
+     * served over HTTPS so local HTTP dev still works.
+     */
+    protected function withAuthCookie(JsonResponse $response, string $token): JsonResponse
+    {
+        $request  = request();
+        $isSecure = $request->isSecure() || $request->headers->get('X-Forwarded-Proto') === 'https';
+
+        return $response->withCookie(cookie(
+            'eshauda_token',
+            $token,
+            60 * 24 * 30,              // 30 days
+            '/',
+            null,
+            $isSecure,
+            true,                       // HttpOnly — not readable by JS
+            false,
+            'Lax',
+        ));
+    }
+
+    protected function withClearedAuthCookie(JsonResponse $response): JsonResponse
+    {
+        return $response->withCookie(cookie(
+            'eshauda_token',
+            '',
+            -60,
+            '/',
+            null,
+            app()->isProduction(),
+            true,
+            false,
+            'Lax',
+        ));
+    }
+
     protected function error(string $code, string $message, int $status = 400, array $fields = []): JsonResponse
     {
         $body = ['error' => ['code' => $code, 'message' => $message]];

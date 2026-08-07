@@ -23,7 +23,9 @@ class UserService
         $data['group_id']      = $data['group_id'] ?? 'free';
 
         unset($data['password']);
-        return User::create($data);
+        // forceCreate: trusted internal registration — status/group_id are
+        // set here deliberately, not from caller-controlled mass assignment.
+        return User::forceCreate($data);
     }
 
     public function verifyLegacyPassword(string $plain, string $hash): bool

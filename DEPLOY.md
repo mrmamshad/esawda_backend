@@ -145,3 +145,4 @@ FRONTEND_URL=https://your-frontend-domain.com
 3. Copy the live `store_id` and `store_password` into the env vars above.
 4. Toggle `SSLCOMMERZ_MODE=live` — the code auto-selects the correct API
    domain (`securepay.sslcommerz.com` vs `sandbox.sslcommerz.com`).
+

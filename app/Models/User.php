@@ -18,11 +18,24 @@ class User extends Model implements Authenticatable
     use AuthTrait, Notifiable, HasApiTokens;
 
     protected $table = 'user';
-    protected $guarded = [];
+
+    /**
+     * Explicit whitelist — never mass-assign privilege columns
+     * (user_type, status, group_id, password_hash, forgot, confirm).
+     * Those are only written via forceFill() at trusted, validated call
+     * sites (AuthController, UserAdminController).
+     */
+    protected $fillable = [
+        'username', 'email', 'name', 'phone', 'city', 'country', 'address',
+        'tagline', 'description', 'website', 'image', 'sex', 'postcode',
+        'facebook', 'twitter', 'googleplus', 'instagram', 'linkedin', 'youtube',
+        'oauth_provider', 'oauth_link', 'created_at', 'updated_at',
+    ];
+
     public $timestamps = true;
 
     protected $hidden = [
-        'password_hash', 'forgot', 'confirm', 'oauth_uid',
+        'password_hash', 'forgot', 'forgot_expires_at', 'confirm', 'oauth_uid',
     ];
 
     public function getAuthPassword(): string

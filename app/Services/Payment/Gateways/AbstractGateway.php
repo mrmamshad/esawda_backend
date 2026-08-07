@@ -24,18 +24,34 @@ abstract class AbstractGateway implements PaymentGatewayInterface
         return route('payment', ['access_token' => $tx->id, 'i' => $this->slug()]);
     }
 
+    /**
+     * Default callback handling. Deliberately conservative: we never mark a
+     * transaction successful from a client-supplied payload — a concrete
+     * gateway must override this and verify server-side (signature / gateway
+     * API + amount match) before setting status to 'success'.
+     *
+     * @throws \RuntimeException when a client payload claims success.
+     */
     public function handleCallback(array $payload): Transaction
     {
         $tx = Transaction::findOrFail($payload['transaction_id'] ?? 0);
-        $tx->status  = $payload['status'] ?? 'success';
-        $tx->payment_id = $payload['payment_id'] ?? null;
+
+        $claimed = strtolower((string) ($payload['status'] ?? 'pending'));
+        if ($claimed === 'success') {
+            throw new \RuntimeException(
+                sprintf('%s::handleCallback must verify server-side before marking success', static::class)
+            );
+        }
+
+        $tx->status     = $claimed;
+        $tx->payment_id = $payload['payment_id'] ?? $tx->payment_id;
         $tx->save();
         return $tx;
     }
 
     public function verify(Transaction $tx): bool
     {
-        return $tx->status === 'success';
+        return $tx->status === \App\Enums\TransactionStatus::Success;
     }
 
     /** Shortcut for reading `config('quickad.gateways.{slug}.key')` etc. */

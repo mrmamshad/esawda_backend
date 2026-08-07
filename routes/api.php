@@ -44,25 +44,27 @@ use App\Http\Controllers\Api\V1\Admin\SettingsAdminController;
 Route::prefix('v1')->group(function () {
 
     /* ---- Payment gateway callbacks (public, gateway-posted) ----------- */
+    // POST-only: SSLCommerz form-posts these URLs. The GET aliases were
+    // removed — GET-reachable transaction mutations are CSRF-friendly and
+    // trivially triggered via <img>/navigation.
     Route::post('payments/sslcommerz/success', [PaymentCallbackController::class, 'success']);
     Route::post('payments/sslcommerz/fail',    [PaymentCallbackController::class, 'fail']);
     Route::post('payments/sslcommerz/cancel',  [PaymentCallbackController::class, 'cancel']);
     Route::post('payments/sslcommerz/ipn',     [PaymentCallbackController::class, 'ipn']);
-    // Some gateways issue GET on success too — accept both to be safe.
-    Route::get ('payments/sslcommerz/success', [PaymentCallbackController::class, 'success']);
-    Route::get ('payments/sslcommerz/fail',    [PaymentCallbackController::class, 'fail']);
-    Route::get ('payments/sslcommerz/cancel',  [PaymentCallbackController::class, 'cancel']);
 
-    /* ---- Auth (public) ------------------------------------------------- */
-    Route::post('auth/register', [AuthController::class, 'register']);
-    Route::post('auth/login',    [AuthController::class, 'login']);
-    Route::post('auth/forgot',   [AuthController::class, 'forgot']);
-    Route::post('auth/reset',    [AuthController::class, 'reset']);
+    /* ---- Auth (public) — throttled to blunt brute-force/cred-stuffing -- */
+    Route::post('auth/login',    [AuthController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('auth/forgot',   [AuthController::class, 'forgot'])->middleware('throttle:5,1');
+    Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
+    Route::post('auth/reset',    [AuthController::class, 'reset'])->middleware('throttle:5,1');
 
-    /* ---- Social auth (public) — Bikroy-style popup flow --------------- */
-    Route::post('auth/social/google/silent',       [SocialAuthController::class, 'silentGoogle']);
+    /* ---- Social auth (public) — Google/Facebook OAuth popup flow ------- */
+    // NOTE: the insecure `auth/social/google/silent` (email-only, no token
+    // verification) was removed — see SILENT_GOOGLE_REMOVAL. All social
+    // logins must go through the verified `callback` flow below.
     Route::post('auth/social/{provider}/callback', [SocialAuthController::class, 'callback'])
-        ->where('provider', 'google|facebook');
+        ->where('provider', 'google|facebook')
+        ->middleware('throttle:10,1');
 
     /* ---- Taxonomy (public) --------------------------------------------- */
     Route::get('categories',          [CategoryController::class, 'index']);
@@ -99,7 +101,8 @@ Route::prefix('v1')->group(function () {
     Route::get('blogs',                        [ContentController::class, 'blogs']);
     Route::get('blog-categories',              [ContentController::class, 'blogCategories']);
     Route::get('blogs/{idSlug}',               [ContentController::class, 'blog']);
-    Route::post('contact',                     [ContentController::class, 'contact']);
+    Route::post('contact',                     [ContentController::class, 'contact'])
+        ->middleware('throttle:10,1');
 
     /* ---- Authenticated (Sanctum bearer) -------------------------------- */
     Route::middleware('auth:sanctum')->group(function () {

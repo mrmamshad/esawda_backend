@@ -43,7 +43,7 @@ class SocialAuthController extends Controller
         // of which social provider they last used.
         $user = User::where('email', $profile['email'])->first();
         if (! $user) {
-            $user = User::create([
+            $user = User::forceCreate([
                 'username'      => $this->uniqueUsername($profile['email']),
                 'email'         => $profile['email'],
                 'name'          => $profile['name'] ?? Str::before($profile['email'], '@'),
@@ -57,38 +57,14 @@ class SocialAuthController extends Controller
             ]);
         }
 
-        return response()->json([
+        $token = $user->createToken('social:' . $provider)->plainTextToken;
+
+        return $this->withAuthCookie(response()->json([
             'data' => [
                 'user'  => (new UserResource($user))->resolve(),
-                'token' => $user->createToken('social:' . $provider)->plainTextToken,
+                'token' => $token,
             ],
-        ]);
-    }
-
-    /**
-     * POST /auth/social/google/silent { email }
-     *
-     * "Continue as …" one-tap card. We only issue a fresh session if a user
-     * with this email already exists — otherwise we 404 so the frontend
-     * falls back to the standard flow.
-     */
-    public function silentGoogle(Request $request)
-    {
-        $data = $request->validate([
-            'email' => ['required', 'email'],
-        ]);
-
-        $user = User::where('email', $data['email'])->first();
-        if (! $user) {
-            return response()->json(['message' => 'No matching account.'], 404);
-        }
-
-        return response()->json([
-            'data' => [
-                'user'  => (new UserResource($user))->resolve(),
-                'token' => $user->createToken('social:google-silent')->plainTextToken,
-            ],
-        ]);
+        ]), $token);
     }
 
     /* -- provider fetchers -- */

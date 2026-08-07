@@ -25,8 +25,14 @@ class SettingsAdminController extends Controller
             'settings.*' => ['nullable'],
         ]);
         foreach ($data['settings'] as $k => $v) {
+            // Skip prototype-pollution / reserved keys and cap length so the
+            // option table can't be abused as an arbitrary write sink.
+            $k = (string) $k;
+            if ($k === '' || strlen($k) > 191) continue;
+            if (in_array($k, ['__proto__', 'constructor', 'prototype'], true)) continue;
+
             Option::updateOrCreate(
-                ['option_name'  => (string) $k],
+                ['option_name'  => $k],
                 ['option_value' => is_scalar($v) ? (string) $v : json_encode($v)],
             );
         }

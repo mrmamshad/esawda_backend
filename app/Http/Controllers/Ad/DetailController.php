@@ -22,7 +22,7 @@ class DetailController extends Controller
         }
         $post = Post::with(['user', 'category', 'subCategory', 'reviews', 'customData'])
                     ->find($id);
-        if (! $post || $post->status !== 'active') {
+        if (! $post || $post->status !== \App\Enums\PostStatus::Active) {
             abort(404);
         }
 

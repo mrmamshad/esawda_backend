@@ -13,7 +13,7 @@ class TransactionResource extends BaseResource
             'amount'      => (float) ($this->amount ?? 0),
             'currency'    => $this->currency ?? 'USD',
             'method'      => $this->method,
-            'status'      => $this->status ?: 'pending',
+            'status'      => $this->status?->value ?? 'pending',
             'reference'   => $this->reference,
             'invoice_url' => $this->id ? url('/api/v1/me/transactions/'.$this->id.'/invoice') : null,
             'created_at'  => optional($this->created_at)
