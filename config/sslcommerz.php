@@ -5,8 +5,10 @@
 | SSLCommerz Payment Gateway Config
 |--------------------------------------------------------------------------
 |
-| Sandbox credentials shipped by default (safe for public repos). Override
-| in .env for production. See https://developer.sslcommerz.com/ for docs.
+| Credentials come exclusively from .env — no defaults are shipped. If
+| SSLCOMMERZ_STORE_ID / SSLCOMMERZ_STORE_PASSWORD are unset, the gateway
+| refuses to initiate (fail closed) rather than silently using a shared
+| sandbox account.
 |
 | Callback URLs point at Laravel API endpoints which validate the payment
 | server-side and then 302 the buyer back to the Next.js frontend at the
@@ -16,8 +18,8 @@
 
 return [
     'mode'           => env('SSLCOMMERZ_MODE', 'sandbox'), // sandbox | live
-    'store_id'       => env('SSLCOMMERZ_STORE_ID', 'sandb69df7399315be'),
-    'store_password' => env('SSLCOMMERZ_STORE_PASSWORD', 'sandb69df7399315be@ssl'),
+    'store_id'       => env('SSLCOMMERZ_STORE_ID'),
+    'store_password' => env('SSLCOMMERZ_STORE_PASSWORD'),
 
     'api_domain' => env('SSLCOMMERZ_MODE', 'sandbox') === 'live'
         ? 'https://securepay.sslcommerz.com'

@@ -35,6 +35,13 @@ class SSLCommerzGateway extends AbstractGateway
         $base     = (string) config('sslcommerz.api_domain');
         $currency = (string) config('sslcommerz.currency', 'BDT');
 
+        // Fail closed when credentials are missing — never fall back to a
+        // shared sandbox account.
+        if ($storeId === '' || $storePwd === '') {
+            Log::error('SSLCommerz init aborted: missing store credentials');
+            return null;
+        }
+
         // Persist gateway + pending status early so IPN can find the row.
         $tx->transaction_gatway = $this->slug();
         $tx->status             = 'pending';
@@ -100,6 +107,15 @@ class SSLCommerzGateway extends AbstractGateway
         /** @var Transaction $tx */
         $tx = Transaction::where('payment_id', $tranId)->firstOrFail();
 
+        // When verify_hash is enabled, require SSLCommerz's hash signature
+        // (verify_key + verify_sign) to match before accepting anything.
+        if (config('sslcommerz.verify_hash', true) && ! $this->verifyHash($payload)) {
+            Log::warning('SSLCommerz callback rejected: bad verify hash', ['tran_id' => $tranId]);
+            $tx->status = 'failed';
+            $tx->save();
+            return $tx;
+        }
+
         // Success only when SSLCommerz's validation API confirms the
         // val_id AND the paid amount matches our local record. Never trust
         // the browser-posted status or val_id alone (amount-tampering guard).
@@ -123,6 +139,34 @@ class SSLCommerzGateway extends AbstractGateway
     public function verify(Transaction $tx): bool
     {
         return $tx->status === 'success';
+    }
+
+    /**
+     * Verify SSLCommerz's hash signature. Per the v4 spec: take the
+     * verify_key's colon-separated field names, sort them, build
+     * `k1=v1&k2=v2...`, and SHA-512 the result using store_password as the
+     * salt; compare to verify_sign. Guards against forged callbacks that
+     * skip the server validation API.
+     */
+    private function verifyHash(array $payload): bool
+    {
+        $key   = (string) ($payload['verify_key']   ?? '');
+        $sign  = (string) ($payload['verify_sign']  ?? '');
+        $store = (string) config('sslcommerz.store_password');
+
+        if ($key === '' || $sign === '' || $store === '') return false;
+
+        $fields = array_filter(explode(',', $key));
+        sort($fields);
+
+        $pairs = [];
+        foreach ($fields as $f) {
+            $pairs[] = $f . '=' . (string) ($payload[$f] ?? '');
+        }
+        $query  = implode('&', $pairs);
+        $digest = hash_hmac('sha512', $query, $store);
+
+        return hash_equals($digest, $sign);
     }
 
     /**
