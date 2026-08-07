@@ -65,9 +65,9 @@ class AccountController extends Controller
     /**
      * POST /me/avatar  (multipart)  { avatar: file }
      *
-     * Stores the file on the public disk under users/avatars/ and updates
-     * the user's `image` column. Returns the fresh UserResource so the
-     * frontend can swap the header/dropdown avatar without another fetch.
+     * Stores the file on the public disk under profile/ and updates the
+     * user's `image` column. Returns the fresh UserResource so the frontend
+     * can swap the header/dropdown avatar without another fetch.
      */
     public function uploadAvatar(Request $request)
     {
@@ -76,7 +76,10 @@ class AccountController extends Controller
         ]);
 
         $user = $request->user();
-        $path = $data['avatar']->store('users/avatars', 'public');
+        // Store under profile/ so the web URL /storage/profile/<file> matches
+        // the base every UserResource/SellerResource hardcodes. (Previously
+        // uploaded to users/avatars/, which 404'd against that base.)
+        $path = $data['avatar']->store('profile', 'public');
 
         // Best-effort cleanup of the previous file (skip default seeds).
         if ($user->image && ! str_starts_with($user->image, 'default_')) {
