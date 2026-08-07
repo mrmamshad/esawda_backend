@@ -44,14 +44,13 @@ use App\Http\Controllers\Api\V1\Admin\SettingsAdminController;
 Route::prefix('v1')->group(function () {
 
     /* ---- Payment gateway callbacks (public, gateway-posted) ----------- */
+    // POST-only: SSLCommerz form-posts these URLs. The GET aliases were
+    // removed — GET-reachable transaction mutations are CSRF-friendly and
+    // trivially triggered via <img>/navigation.
     Route::post('payments/sslcommerz/success', [PaymentCallbackController::class, 'success']);
     Route::post('payments/sslcommerz/fail',    [PaymentCallbackController::class, 'fail']);
     Route::post('payments/sslcommerz/cancel',  [PaymentCallbackController::class, 'cancel']);
     Route::post('payments/sslcommerz/ipn',     [PaymentCallbackController::class, 'ipn']);
-    // Some gateways issue GET on success too — accept both to be safe.
-    Route::get ('payments/sslcommerz/success', [PaymentCallbackController::class, 'success']);
-    Route::get ('payments/sslcommerz/fail',    [PaymentCallbackController::class, 'fail']);
-    Route::get ('payments/sslcommerz/cancel',  [PaymentCallbackController::class, 'cancel']);
 
     /* ---- Auth (public) — throttled to blunt brute-force/cred-stuffing -- */
     Route::post('auth/login',    [AuthController::class, 'login'])->middleware('throttle:5,1');
