@@ -10,6 +10,10 @@ class Transaction extends Model
     public $timestamps = false;
     protected $guarded = [];
 
+    protected $casts = [
+        'status' => \App\Enums\TransactionStatus::class,
+    ];
+
     public function seller() { return $this->belongsTo(User::class, 'seller_id'); }
     public function post()   { return $this->belongsTo(Post::class, 'product_id'); }
 }

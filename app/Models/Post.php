@@ -18,6 +18,7 @@ class Post extends Model
         'updated_at' => 'datetime',
         'price'      => 'integer',
         'view'       => 'integer',
+        'status'     => \App\Enums\PostStatus::class,
     ];
 
     public function scopeActive($q)    { return $q->where('status', 'active')->where('hide', '0'); }

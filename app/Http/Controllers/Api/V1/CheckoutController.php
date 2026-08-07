@@ -118,7 +118,7 @@ class CheckoutController extends Controller
 
         return $this->ok([
             'id'         => $tx->id,
-            'status'     => $tx->status,
+            'status'     => $tx->status?->value ?? 'pending',
             'amount'     => (float) $tx->amount,
             'gateway'    => $tx->transaction_gatway,
             'purpose'    => $tx->purpose ?? null,

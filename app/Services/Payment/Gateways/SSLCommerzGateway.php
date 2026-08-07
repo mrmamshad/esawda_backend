@@ -138,7 +138,7 @@ class SSLCommerzGateway extends AbstractGateway
     /** Direct API verification — never trust the browser-posted status alone. */
     public function verify(Transaction $tx): bool
     {
-        return $tx->status === 'success';
+        return $tx->status === \App\Enums\TransactionStatus::Success;
     }
 
     /**

@@ -29,7 +29,7 @@ class AdResource extends BaseResource
             'price'       => (int) $this->price,
             'negotiable'  => $this->bool($this->negotiable),
             'condition'   => $this->condition ?? 'used',   // 'new' | 'used'
-            'status'      => (string) $this->status,       // draft|pending|active|sold_out|removed|expire|rejected
+            'status'      => $this->status?->value,        // draft|pending|active|sold_out|removed|expire|rejected
             'thumbnail'   => $thumb,
             'featured'    => $this->bool($this->featured),
             'urgent'      => $this->bool($this->urgent),

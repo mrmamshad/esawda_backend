@@ -48,11 +48,11 @@ class PaymentCallbackController extends Controller
         Log::info('SSLCommerz IPN received', $request->all());
         $tx = $this->processPayload($request->all());
 
-        if ($tx && $tx->status === 'success') {
+        if ($tx && $tx->status === \App\Enums\TransactionStatus::Success) {
             FulfilTransactionJob::dispatch($tx->id);
             return response()->json(['status' => 'success']);
         }
-        return response()->json(['status' => $tx?->status ?? 'unknown'], $tx ? 200 : 400);
+        return response()->json(['status' => $tx?->status?->value ?? 'unknown'], $tx ? 200 : 400);
     }
 
     /* --------------------------------------------------------------- */
@@ -60,12 +60,12 @@ class PaymentCallbackController extends Controller
     private function handleAndRedirect(Request $request, string $expected): Response
     {
         $tx = $this->processPayload($request->all());
-        if ($tx && $tx->status === 'success') {
+        if ($tx && $tx->status === \App\Enums\TransactionStatus::Success) {
             FulfilTransactionJob::dispatch($tx->id);
         }
 
         $frontend = rtrim((string) config('sslcommerz.frontend_url', 'http://localhost:3000'), '/');
-        $status   = $tx?->status ?? $expected;
+        $status   = $tx?->status?->value ?? $expected;
         $target   = $frontend . '/membership/' . ($status === 'success' ? 'success' : 'failed')
                    . '?tx=' . urlencode((string) ($tx?->id ?? ''))
                    . '&status=' . urlencode($status);

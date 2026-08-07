@@ -32,7 +32,7 @@ class FulfilTransactionJob implements ShouldQueue
     {
         /** @var Transaction|null $tx */
         $tx = Transaction::find($this->transactionId);
-        if (! $tx || $tx->status !== 'success') return;
+        if (! $tx || $tx->status !== \App\Enums\TransactionStatus::Success) return;
 
         DB::transaction(function () use ($tx) {
             $purpose = $tx->purpose ?? '';

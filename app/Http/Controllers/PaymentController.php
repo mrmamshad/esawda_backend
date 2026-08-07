@@ -44,7 +44,9 @@ class PaymentController extends Controller
         return redirect()->route('payment', [
             'access_token' => $tx->id,
             'i'            => $i,
-            'status'       => $tx->status === 'success' ? 'success' : ($tx->status === 'cancel' ? 'cancel' : 'pending'),
+            'status'       => $tx->status === \App\Enums\TransactionStatus::Success
+                ? 'success'
+                : ($tx->status === \App\Enums\TransactionStatus::Cancel ? 'cancel' : 'pending'),
         ]);
     }
 }

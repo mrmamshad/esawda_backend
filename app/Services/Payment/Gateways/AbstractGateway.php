@@ -51,7 +51,7 @@ abstract class AbstractGateway implements PaymentGatewayInterface
 
     public function verify(Transaction $tx): bool
     {
-        return $tx->status === 'success';
+        return $tx->status === \App\Enums\TransactionStatus::Success;
     }
 
     /** Shortcut for reading `config('quickad.gateways.{slug}.key')` etc. */
