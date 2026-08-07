@@ -35,7 +35,7 @@ class User extends Model implements Authenticatable
     public $timestamps = true;
 
     protected $hidden = [
-        'password_hash', 'forgot', 'confirm', 'oauth_uid',
+        'password_hash', 'forgot', 'forgot_expires_at', 'confirm', 'oauth_uid',
     ];
 
     public function getAuthPassword(): string

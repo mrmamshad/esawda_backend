@@ -93,7 +93,10 @@ class AuthController extends Controller
         // Always 200 to prevent user enumeration.
         if ($user) {
             $token = Str::random(64);
-            $user->forceFill(['forgot' => $token])->save();
+            $user->forceFill([
+                'forgot'           => $token,
+                'forgot_expires_at' => now()->addMinutes(60),
+            ])->save();
 
             $resetUrl = rtrim(env('FRONTEND_URLS', 'http://localhost:3000'), ',')
                       . '/auth/reset?token=' . urlencode($token);
@@ -118,11 +121,18 @@ class AuthController extends Controller
             return $this->error('INVALID_TOKEN', 'Reset token is invalid or has been used.', 422);
         }
 
+        // Token expires 60 minutes after issue; clear it on use (single-use).
+        if ($user->forgot_expires_at && now()->greaterThan($user->forgot_expires_at)) {
+            $user->forceFill(['forgot' => null, 'forgot_expires_at' => null])->save();
+            return $this->error('INVALID_TOKEN', 'Reset token has expired.', 422);
+        }
+
         DB::transaction(function () use ($user, $data) {
             $user->forceFill([
-                'password_hash' => Hash::make($data['password']),
-                'forgot'        => null,
-                'updated_at'    => now(),
+                'password_hash'    => Hash::make($data['password']),
+                'forgot'           => null,
+                'forgot_expires_at' => null,
+                'updated_at'       => now(),
             ])->save();
             $user->tokens()->delete(); // revoke every existing session
         });
