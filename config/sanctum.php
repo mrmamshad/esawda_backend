@@ -50,7 +50,10 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Tokens expire after N minutes (default 1440 = 24h). Stale tokens are
+    // rejected server-side by Sanctum; users simply sign in again. Set
+    // SANCTUM_TOKEN_EXPIRATION in .env to override.
+    'expiration' => (int) env('SANCTUM_TOKEN_EXPIRATION', 1440),
 
     /*
     |--------------------------------------------------------------------------
