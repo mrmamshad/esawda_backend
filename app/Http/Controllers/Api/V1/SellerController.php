@@ -11,6 +11,7 @@ use App\Models\Post;
 use App\Models\Review;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -32,26 +33,39 @@ class SellerController extends Controller
             ->orWhere('id', is_numeric($username) ? (int) $username : -1)
             ->firstOrFail();
 
-        // Attach the per-page stats without triggering N+1 queries.
-        $user->ads_total  = Post::where('user_id', $user->id)->count();
-        $user->ads_active = Post::where('user_id', $user->id)->where('status', 'active')->where('hide', '0')->count();
-        $user->ads_sold   = Post::where('user_id', $user->id)->where('status', 'expire')->count();
+        // Seller stats change rarely per page-view; cache them 5 min and
+        // collapse the 3 separate Post COUNTs into one grouped conditional
+        // aggregate (3 queries -> 2: grouped ad stats + rating).
+        $stats = Cache::remember("seller.stats.{$user->id}", 300, function () use ($user) {
+            // One grouped pass: total / active / sold counts by status.
+            $statusCounts = Post::where('user_id', $user->id)
+                ->selectRaw("COUNT(*) as total, SUM(status = 'active' AND hide = '0') as active, SUM(status = 'expire') as sold")
+                ->first();
 
-        // Both tables have `user_id` so we must qualify. Query builder
-        // auto-prefixes "table.col" strings passed to where(). Everything
-        // works consistently once we let it handle the prefixing itself.
-        $prefix     = DB::getTablePrefix();
-        $reviewsRef = $prefix . 'reviews';
+            $prefix     = DB::getTablePrefix();
+            $reviewsRef = $prefix . 'reviews';
 
-        $ratingRow = DB::table('reviews')
-            ->join('product', 'reviews.productID', '=', 'product.id')
-            ->where('product.user_id', $user->id)
-            ->where('reviews.publish', 1)
-            ->selectRaw("AVG({$reviewsRef}.rating) as avg_rating, COUNT(*) as reviews_count")
-            ->first();
+            $ratingRow = DB::table('reviews')
+                ->join('product', 'reviews.productID', '=', 'product.id')
+                ->where('product.user_id', $user->id)
+                ->where('reviews.publish', 1)
+                ->selectRaw("AVG({$reviewsRef}.rating) as avg_rating, COUNT(*) as reviews_count")
+                ->first();
 
-        $user->avg_rating    = $ratingRow?->avg_rating;
-        $user->reviews_count = $ratingRow?->reviews_count ?? 0;
+            return [
+                'ads_total'    => (int) ($statusCounts->total ?? 0),
+                'ads_active'   => (int) ($statusCounts->active ?? 0),
+                'ads_sold'     => (int) ($statusCounts->sold ?? 0),
+                'avg_rating'   => $ratingRow?->avg_rating,
+                'reviews_count' => (int) ($ratingRow?->reviews_count ?? 0),
+            ];
+        });
+
+        $user->ads_total     = $stats['ads_total'];
+        $user->ads_active    = $stats['ads_active'];
+        $user->ads_sold      = $stats['ads_sold'];
+        $user->avg_rating    = $stats['avg_rating'];
+        $user->reviews_count = $stats['reviews_count'];
 
         return $this->ok(new SellerResource($user));
     }
