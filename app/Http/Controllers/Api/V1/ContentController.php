@@ -124,12 +124,12 @@ class ContentController extends Controller
         $data  = $request->validated();
         $admin = (string) (config('quickad.admin_email') ?: env('MAIL_TO', 'admin@offersale.local'));
 
-        EmailQueue::create([
-            'email'   => $admin,
-            'toname'  => 'offersale. admin',
-            'subject' => 'Contact form: ' . ($data['subject'] ?? '(no subject)'),
-            'body'    => "From: {$data['name']} <{$data['email']}>\n\n{$data['message']}",
-        ]);
+        EmailQueue::enqueue(
+            $admin,
+            'site admin',
+            'Contact form: ' . ($data['subject'] ?? '(no subject)'),
+            "From: {$data['name']} <{$data['email']}>\n\n{$data['message']}",
+        );
 
         return $this->ok(['message' => 'Thanks — your message has been sent.']);
     }

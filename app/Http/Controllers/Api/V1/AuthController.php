@@ -105,13 +105,13 @@ class AuthController extends Controller
             $resetUrl = rtrim(env('FRONTEND_URLS', 'http://localhost:3000'), ',')
                       . '/auth/reset?token=' . urlencode($token);
 
-            // Enqueue via the legacy email queue table.
-            EmailQueue::create([
-                'email'   => $user->email,
-                'toname'  => $user->name ?: $user->username,
-                'subject' => 'Reset your offersale. password',
-                'body'    => "Hi {$user->name},\n\nUse the link below to reset your password:\n{$resetUrl}\n\nIf you did not request this, ignore this email.",
-            ]);
+            // Send the reset email (queued/sync via SendMailJob).
+            EmailQueue::enqueue(
+                $user->email,
+                $user->name ?: $user->username,
+                'Reset your password',
+                "Hi {$user->name},\n\nUse the link below to reset your password:\n{$resetUrl}\n\nIf you did not request this, ignore this email.",
+            );
         }
         return $this->ok(['message' => 'If the email exists, a reset link has been sent.']);
     }
