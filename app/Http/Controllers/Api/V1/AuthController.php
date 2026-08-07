@@ -42,10 +42,12 @@ class AuthController extends Controller
             'updated_at'    => now(),
         ]);
 
-        return $this->created([
+        $token = $user->createToken('spa')->plainTextToken;
+
+        return $this->withAuthCookie($this->created([
             'user'  => (new UserResource($user))->resolve(),
-            'token' => $user->createToken('spa')->plainTextToken,
-        ]);
+            'token' => $token,
+        ]), $token);
     }
 
     public function login(LoginRequest $request)
@@ -64,10 +66,12 @@ class AuthController extends Controller
 
         $user->forceFill(['lastactive' => now(), 'online' => '1'])->save();
 
-        return $this->ok([
+        $token = $user->createToken($data['device'] ?? 'spa')->plainTextToken;
+
+        return $this->withAuthCookie($this->ok([
             'user'  => (new UserResource($user))->resolve(),
-            'token' => $user->createToken($data['device'] ?? 'spa')->plainTextToken,
-        ]);
+            'token' => $token,
+        ]), $token);
     }
 
     public function me(Request $request)
@@ -78,7 +82,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
-        return $this->ok(['message' => 'Logged out.']);
+        return $this->withClearedAuthCookie($this->ok(['message' => 'Logged out.']));
     }
 
     public function logoutAll(Request $request)
@@ -137,9 +141,11 @@ class AuthController extends Controller
             $user->tokens()->delete(); // revoke every existing session
         });
 
-        return $this->ok([
+        $token = $user->createToken('spa')->plainTextToken;
+
+        return $this->withAuthCookie($this->ok([
             'user'  => (new UserResource($user))->resolve(),
-            'token' => $user->createToken('spa')->plainTextToken,
-        ]);
+            'token' => $token,
+        ]), $token);
     }
 }

@@ -57,12 +57,14 @@ class SocialAuthController extends Controller
             ]);
         }
 
-        return response()->json([
+        $token = $user->createToken('social:' . $provider)->plainTextToken;
+
+        return $this->withAuthCookie(response()->json([
             'data' => [
                 'user'  => (new UserResource($user))->resolve(),
-                'token' => $user->createToken('social:' . $provider)->plainTextToken,
+                'token' => $token,
             ],
-        ]);
+        ]), $token);
     }
 
     /* -- provider fetchers -- */
