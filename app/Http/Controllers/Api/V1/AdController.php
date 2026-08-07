@@ -8,6 +8,7 @@ use App\Http\Resources\V1\AdDetailResource;
 use App\Http\Resources\V1\AdResource;
 use App\Models\Post;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * /api/v1/ads — public read surface used by the Browse page, Ad Detail,
@@ -132,28 +133,38 @@ class AdController extends Controller
 
     public function featured(Request $request)
     {
-        $q = Post::query()->active()->featured()
-                 ->orderByDesc('id')
-                 ->limit(max(1, min(24, (int) $request->query('limit', 6))));
-        $this->applyIncludes($q, $request);
-        return $this->ok(AdResource::collection($q->get()));
+        $limit = max(1, min(24, (int) $request->query('limit', 6)));
+        $key = "ads.featured.$limit." . (string) $request->query('include', 'category,sub_category,user');
+        // Featured rail changes often (promotions rotate) → short 120s TTL.
+        $rows = Cache::remember($key, 120, function () use ($limit, $request) {
+            $q = Post::query()->active()->featured()
+                     ->orderByDesc('id')
+                     ->limit($limit);
+            $this->applyIncludes($q, $request);
+            return $q->get();
+        });
+        return $this->ok(AdResource::collection($rows));
     }
 
     public function similar(int $id, Request $request)
     {
-        $ad = Post::findOrFail($id);
         $limit = max(1, min(24, (int) $request->query('limit', 6)));
-        $q = Post::query()->active()
-                 ->where('id', '!=', $id)
-                 ->where(function ($sub) use ($ad) {
-                     $sub->where('user_id', $ad->user_id)
-                         ->orWhere('sub_category', $ad->sub_category)
-                         ->orWhere('category', $ad->category);
-                 })
-                 ->orderByDesc('id')
-                 ->limit($limit);
-        $this->applyIncludes($q, $request);
-        return $this->ok(AdResource::collection($q->get()));
+        $key = "ads.similar.$id.$limit";
+        $rows = Cache::remember($key, 300, function () use ($id, $limit, $request) {
+            $ad = Post::findOrFail($id);
+            $q = Post::query()->active()
+                     ->where('id', '!=', $id)
+                     ->where(function ($sub) use ($ad) {
+                         $sub->where('user_id', $ad->user_id)
+                             ->orWhere('sub_category', $ad->sub_category)
+                             ->orWhere('category', $ad->category);
+                     })
+                     ->orderByDesc('id')
+                     ->limit($limit);
+            $this->applyIncludes($q, $request);
+            return $q->get();
+        });
+        return $this->ok(AdResource::collection($rows));
     }
 
     public function searchSuggest(Request $request)
@@ -161,11 +172,13 @@ class AdController extends Controller
         $needle = trim((string) $request->query('q', ''));
         if (mb_strlen($needle) < 2) return $this->ok([]);
 
-        $hits = Post::query()->active()
-            ->where('product_name', 'like', "%{$needle}%")
-            ->orderByDesc('id')
-            ->limit(10)
-            ->get(['id', 'slug', 'product_name', 'price']);
+        $hits = Cache::remember('ads.suggest.' . md5(mb_strtolower($needle)), 60, function () use ($needle) {
+            return Post::query()->active()
+                ->where('product_name', 'like', "%{$needle}%")
+                ->orderByDesc('id')
+                ->limit(10)
+                ->get(['id', 'slug', 'product_name', 'price']);
+        });
 
         return $this->ok($hits->map(fn ($h) => [
             'id'       => (int) $h->id,

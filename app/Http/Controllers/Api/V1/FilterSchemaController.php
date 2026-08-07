@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\CustomField;
 use App\Models\SubCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * GET /api/v1/filter-schema
@@ -33,18 +34,23 @@ class FilterSchemaController extends Controller
         $catId    = $this->resolveCategoryId($request->query('category'));
         $subCatId = $this->resolveSubCategoryId($request->query('sub_category'));
 
-        $fields = CustomField::query()
-            ->orderBy('custom_order')
-            ->get()
-            ->filter(function (CustomField $f) use ($catId, $subCatId) {
-                if ($this->bool($f->custom_anycat)) return true;
+        // Custom-field schema is static config; cache the resolved field list
+        // by the (category, sub_category) scope. Resolved ids are null-safe.
+        $cacheKey = 'filter-schema.' . ($catId ?? 'all') . '.' . ($subCatId ?? 'all');
+        $fields = Cache::remember($cacheKey, 300, function () use ($catId, $subCatId) {
+            return CustomField::query()
+                ->orderBy('custom_order')
+                ->get()
+                ->filter(function (CustomField $f) use ($catId, $subCatId) {
+                    if ($this->bool($f->custom_anycat)) return true;
 
-                if ($catId !== null && $this->pipeContains($f->custom_catid, $catId)) return true;
-                if ($subCatId !== null && $this->pipeContains($f->custom_subcatid, $subCatId)) return true;
+                    if ($catId !== null && $this->pipeContains($f->custom_catid, $catId)) return true;
+                    if ($subCatId !== null && $this->pipeContains($f->custom_subcatid, $subCatId)) return true;
 
-                return false;
-            })
-            ->values();
+                    return false;
+                })
+                ->values();
+        });
 
         return $this->ok([
             'category'     => $catId,
