@@ -1,41 +1,54 @@
-# Quickad — Laravel 11 Port ✅
+# eSawda — Laravel 11 REST API
 
-The **complete Laravel 11 rewrite** of the legacy raw-PHP Quickad Classified
-Ads CMS (Bylancer v10.4). Sits alongside the legacy app and shares the same
-MySQL database via the `ad_` table prefix.
+The **Laravel 11 rewrite** of the legacy raw-PHP Quickad Classified Ads CMS
+(Bylancer v10.4). Serves a **REST API only** (`/api/v1/*`) that powers the
+Next.js frontend in [`frontend/`](frontend/) (public marketplace) and its
+Next.js admin panel at `/admin/*` (talks to `/api/v1/admin/*`).
 
-> **Status:** REST-API-only backend serving a Next.js SPA (`/frontend`) +
-> Next.js admin panel. **SSLCommerz is the sole registered payment gateway**
-> (Bangladesh market focus; the other 14 legacy gateway classes remain
-> under `App\Services\Payment\Gateways\*` but are commented out in
-> `PaymentManager`). Admin panel lives in Next.js at `/admin/*` and speaks
-> to `/api/v1/admin/*`. Filament is retained only for emergency access.
+> **Payment:** SSLCommerz is the sole registered gateway. The other 14
+> legacy gateway classes remain under `App\Services\Payment\Gateways\*`
+> but are commented out of `PaymentManager`.
+
+---
+
+## Architecture
+
+```
+Next.js (frontend/, :3000)  ── HTTP /api/v1/* ──►  Laravel (this repo, :8100)
+   public marketplace            Sanctum bearer token         MySQL / sqlite (ad_ prefix)
+   shop panel /admin/*
+```
+
+- **Auth:** Sanctum personal-access tokens. Login/register/social set an
+  **HttpOnly + Secure cookie** (`eshauda_token`) so the Next.js server can
+  forward it; the SPA keeps an in-memory copy.
+- **Emails:** `EmailQueue::enqueue()` dispatches `SendMailJob` (password
+  reset, contact form). `QUEUE_CONNECTION=sync` sends inline in dev;
+  `database` defers to a worker in prod.
+- **Payments:** `PaymentCallbackController` validates SSLCommerz callbacks
+  (val_id + amount + `verify_hash` signature), then dispatches
+  `FulfilTransactionJob` for the side-effects (plan bump / ad upgrade).
 
 ---
 
 ## Quick start
 
 ```bash
-cd laravel-quickad
+# Backend (this repo)
 composer install
+cp .env.example .env
 php artisan key:generate
-php artisan migrate --force
-php artisan serve
+php artisan migrate --force        # sqlite by default; see .env for MySQL
+php artisan serve --port=8100      # API at http://localhost:8100/api/v1
+
+# Frontend (separate repo in frontend/)
+cd frontend
+npm install
+cp .env.local.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:8100/api/v1
+npm run dev                        # http://localhost:3000
 ```
 
-Then open:
-
-| URL | What you get |
-|-----|--------------|
-| `http://localhost:8000/` | public front-end (theme: **thenext-theme**) |
-| `http://localhost:8000/login` | user login |
-| `http://localhost:8000/signup` | registration |
-| `http://localhost:8000/listing` | ad search |
-| `http://localhost:8000/admin` | Filament admin panel |
-| `http://localhost:8000/sitemap.xml` | SEO sitemap |
-
-**Default DB is SQLite** for zero-friction dev. To point at the real
-legacy MySQL database, edit `.env`:
+To point at the real legacy MySQL database, edit `.env`:
 
 ```dotenv
 DB_CONNECTION=mysql
@@ -46,70 +59,38 @@ DB_PASSWORD=
 DB_PREFIX=ad_
 ```
 
+Set `APP_DEBUG=false` and `APP_ENV=production` on any non-local deploy.
+
+---
+
+## Key env vars
+
+| Var | Purpose |
+|-----|---------|
+| `FRONTEND_URLS` | comma-separated allowed origins (CORS + reset-link base) |
+| `SSLCOMMERZ_STORE_ID` / `SSLCOMMERZ_STORE_PASSWORD` | gateway creds — **required**, no defaults |
+| `SANCTUM_TOKEN_EXPIRATION` | token lifetime minutes (default 1440) |
+| `QUEUE_CONNECTION` | `sync` (dev) or `database` (prod, run a worker) |
+
 ---
 
 ## What lives where
 
 ```
 app/
-├── Models/                      # 41 Eloquent models (User, Post, Category, Plan, ...)
+├── Models/                      # Eloquent models (User, Post, Category, Plan, ...)
+├── Enums/                       # PostStatus, TransactionStatus (backed enums)
 ├── Http/
-│   ├── Controllers/             # 25 top-level controllers
-│   │   ├── Ad/                  # 9 ad-scoped controllers
-│   │   └── Blog/                # 4 blog controllers
-│   └── Middleware/
-│       └── EnsureLegacyLogin    # ports checkloggedin()
-├── Services/
-│   ├── AuthService              # userlogin() / register / forgot / reset
-│   ├── UserService
-│   ├── AdService
-│   ├── ListingService           # search + filter + sort + paginate
-│   ├── ThemeRenderer            # renders themes.{theme}.{name}.blade.php
-│   ├── TemplateBridge           # .tpl → .blade.php converter
-│   ├── WatermarkService         # plugins/watermark port
-│   ├── ReviewService            # plugins/starreviews port
-│   └── Payment/
-│       ├── PaymentManager       # 15-gateway factory / registry
-│       ├── PaymentGatewayInterface
-│       └── Gateways/            # 15 concrete gateways + AbstractGateway
-├── Filament/Resources/          # 6 admin resources (User, Post, Category,
-│                                #  Plan, Transaction, Blog) + list/create/edit pages
-└── Console/Commands/
-    ├── ConvertTheme             # `php artisan quickad:convert-theme {theme}`
-    └── ConvertLangs             # `php artisan quickad:convert-langs`
-
-config/quickad.php               # legacy $config global port
-database/migrations/             # 31 tables in one migration
-resources/
-├── views/
-│   ├── partials/                # shared header + footer
-│   ├── themes/
-│   │   ├── classic-theme/       # 44 blade files (converted from .tpl)
-│   │   ├── material-theme/      # 41 blade files
-│   │   ├── thenext-theme/       # 47 blade files
-│   │   └── default/             # safe fallbacks (ad-listing)
-│   └── placeholder.blade.php
-└── lang/{en,fr,de,es,...}/quickad.php  # 21 locales × ~750 keys each
-routes/web.php                   # 78 routes
-tests/
-├── Feature/
-│   ├── RouteSmokeTest           # every route < 500
-│   └── AuthTest                 # legacy password_hash compat
-└── Unit/
-    ├── TemplateBridgeTest       # LANG/LINK/IF/LOOP/VAR conversions
-    └── PaymentManagerTest       # 15 gateways resolve correctly
-```
-
----
-
-## Artisan tools shipped
-
-```bash
-# Re-run any time the legacy templates or lang files change
-php artisan quickad:convert-theme thenext-theme
-php artisan quickad:convert-theme classic-theme
-php artisan quickad:convert-theme material-theme
-php artisan quickad:convert-langs
+│   ├── Controllers/Api/V1/      # REST controllers (thin; delegate to Services)
+│   │   └── Admin/               # /api/v1/admin/* panel endpoints
+│   ├── Requests/V1/             # FormRequest validation classes
+│   └── Resources/V1/            # API Resources (field shaping)
+├── Jobs/                        # SendMailJob, FulfilTransactionJob
+├── Mail/                        # LegacyMail (plain-text)
+└── Services/                    # AdMutationService, AdStatsService, Payment/, ...
+routes/api.php                   # /api/v1/* route surface
+database/migrations/             # schema + non-destructive index migrations
+tests/                           # PHPUnit (Feature API smoke, Unit)
 ```
 
 ---
@@ -118,33 +99,16 @@ php artisan quickad:convert-langs
 
 ```bash
 ./vendor/bin/phpunit
-# → 15 tests, 66 assertions, OK
 ```
 
----
-
-## What's *not* done (deliberately left for content passes)
-
-Each ported controller wraps its theme-view render in a `try/catch` that
-falls back to the placeholder page. This means:
-
-- **All URLs return HTTP 200/302 today** — no 5xx anywhere.
-- **BUT** many themed Blade views still reference variables (loop
-  collections, custom-field labels, config keys) that the legacy PHP
-  used to `SetParameter()` before rendering. Those need a per-view
-  "data binding pass" — a mechanical exercise of comparing every
-  `SetParameter()` in `php/*.php` against the corresponding Blade
-  view and adding the missing keys to the controller.
-
-The `default/ad-listing.blade.php` shows the pattern for how to
-replace a legacy view once you're ready to make it fully live.
+Covers auth flows, read-only ad/taxonomy endpoints, route smoke checks,
+and payment-manager registry resolution. (Write-path, checkout, and admin
+endpoints lack coverage as of the quality review — see issue queue.)
 
 ---
 
 ## License note
 
-Quickad is a commercial CodeCanyon product by Bylancer. This Laravel
-port is for **single-site personal use only**; redistribution is not
-permitted without Bylancer's written consent.
-# esawda
-# esawda_backend
+Quickad is a commercial CodeCanyon product by Bylancer. This Laravel port is
+for **single-site personal use only**; redistribution is not permitted
+without Bylancer's written consent.
