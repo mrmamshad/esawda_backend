@@ -3,14 +3,11 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Plan;
-use App\Models\Post;
+use App\Jobs\FulfilTransactionJob;
 use App\Models\Transaction;
-use App\Models\User;
 use App\Services\Payment\PaymentManager;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -52,7 +49,7 @@ class PaymentCallbackController extends Controller
         $tx = $this->processPayload($request->all());
 
         if ($tx && $tx->status === 'success') {
-            $this->fulfil($tx);
+            FulfilTransactionJob::dispatch($tx->id);
             return response()->json(['status' => 'success']);
         }
         return response()->json(['status' => $tx?->status ?? 'unknown'], $tx ? 200 : 400);
@@ -64,7 +61,7 @@ class PaymentCallbackController extends Controller
     {
         $tx = $this->processPayload($request->all());
         if ($tx && $tx->status === 'success') {
-            $this->fulfil($tx);
+            FulfilTransactionJob::dispatch($tx->id);
         }
 
         $frontend = rtrim((string) config('sslcommerz.frontend_url', 'http://localhost:3000'), '/');
@@ -86,41 +83,4 @@ class PaymentCallbackController extends Controller
         }
     }
 
-    /**
-     * Post-success side-effects:
-     *   - plan purchase → bump user's group_id + plan_expiry
-     *   - ad upgrade   → flip featured/urgent/highlight on the post
-     * Idempotent: safe to run repeatedly from IPN + success POST.
-     */
-    private function fulfil(Transaction $tx): void
-    {
-        DB::transaction(function () use ($tx) {
-            $purpose = $tx->purpose ?? '';
-
-            if ($purpose === 'plan' && ! empty($tx->plan_id)) {
-                $plan = Plan::find($tx->plan_id);
-                $user = User::find($tx->seller_id);
-                if ($plan && $user) {
-                    $user->forceFill([
-                        'group_id'    => $plan->slug ?? $plan->name ?? $user->group_id,
-                        'plan_expiry' => now()->addDays(30)->timestamp,
-                        'updated_at'  => now(),
-                    ])->save();
-                }
-            }
-
-            if ($purpose === 'ad_upgrade' && ! empty($tx->product_id)) {
-                $post  = Post::find($tx->product_id);
-                $flags = json_decode((string) ($tx->meta ?? '{}'), true) ?: [];
-                if ($post) {
-                    $post->forceFill([
-                        'featured'   => ! empty($flags['featured'])  ? '1' : $post->featured,
-                        'urgent'     => ! empty($flags['urgent'])    ? '1' : $post->urgent,
-                        'highlight'  => ! empty($flags['highlight']) ? '1' : $post->highlight,
-                        'updated_at' => now(),
-                    ])->save();
-                }
-            }
-        });
-    }
 }
