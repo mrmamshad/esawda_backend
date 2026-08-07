@@ -23,8 +23,8 @@ class SellerResource extends BaseResource
             'description' => $this->description,
             'avatar_url'  => $avatarBase . ($this->image ?: 'default_user.png'),
             'online'      => $this->bool($this->online),
-            'phone'       => $this->phone,
-            'whatsapp'    => $this->whatsapp ?? $this->phone,
+            'phone'       => $this->bool($this->hide_phone) ? null : $this->phone,
+            'whatsapp'    => $this->bool($this->hide_phone) ? null : ($this->whatsapp ?? $this->phone),
             'website'     => $this->website,
             'location'    => [
                 'city'    => $this->city,
