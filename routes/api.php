@@ -59,8 +59,10 @@ Route::prefix('v1')->group(function () {
     Route::post('auth/forgot',   [AuthController::class, 'forgot']);
     Route::post('auth/reset',    [AuthController::class, 'reset']);
 
-    /* ---- Social auth (public) — Bikroy-style popup flow --------------- */
-    Route::post('auth/social/google/silent',       [SocialAuthController::class, 'silentGoogle']);
+    /* ---- Social auth (public) — Google/Facebook OAuth popup flow ------- */
+    // NOTE: the insecure `auth/social/google/silent` (email-only, no token
+    // verification) was removed — see SILENT_GOOGLE_REMOVAL. All social
+    // logins must go through the verified `callback` flow below.
     Route::post('auth/social/{provider}/callback', [SocialAuthController::class, 'callback'])
         ->where('provider', 'google|facebook');
 
