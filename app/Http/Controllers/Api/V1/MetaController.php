@@ -9,6 +9,7 @@ use App\Models\Currency;
 use App\Models\Language;
 use App\Models\Option;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Site-wide meta lookups. Everything here is public, cacheable at the
@@ -18,13 +19,18 @@ class MetaController extends Controller
 {
     public function currencies()
     {
-        return $this->ok(CurrencyResource::collection(Currency::orderBy('code')->get()));
+        return $this->ok(
+            CurrencyResource::collection(
+                Cache::remember('meta.currencies', 300, fn () => Currency::orderBy('code')->get())
+            )
+        );
     }
 
     public function languages()
     {
         return $this->ok(LanguageResource::collection(
-            Language::where('active', 1)->orderByDesc('default')->orderBy('name')->get()
+            Cache::remember('meta.languages', 300, fn () =>
+                Language::where('active', 1)->orderByDesc('default')->orderBy('name')->get())
         ));
     }
 
@@ -49,12 +55,14 @@ class MetaController extends Controller
             ],
         ];
 
-        try {
-            $rows = Option::all(['option_name', 'option_value'])
-                ->pluck('option_value', 'option_name')->toArray();
-            return $this->ok(['settings' => array_replace($defaults, $rows)]);
-        } catch (\Throwable) {
-            return $this->ok(['settings' => $defaults]);
-        }
+        return $this->ok(['settings' => Cache::remember('meta.settings', 300, function () use ($defaults) {
+            try {
+                $rows = Option::all(['option_name', 'option_value'])
+                    ->pluck('option_value', 'option_name')->toArray();
+                return array_replace($defaults, $rows);
+            } catch (\Throwable) {
+                return $defaults;
+            }
+        })]);
     }
 }
