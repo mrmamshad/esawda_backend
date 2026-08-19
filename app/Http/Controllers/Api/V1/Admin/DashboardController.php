@@ -78,7 +78,10 @@ class DashboardController extends Controller
                 'recent' => [
                     'ads'          => Post::whereBetween('created_at', [$currStart, $currEnd])->orderByDesc('id')->limit(6)->get(['id', 'product_name', 'price', 'status', 'created_at']),
                     'users'        => User::whereBetween('created_at', [$currStart, $currEnd])->orderByDesc('id')->limit(6)->get(['id', 'username', 'email', 'created_at']),
-                    'transactions' => Transaction::whereBetween('created_at', [$currStart, $currEnd])->orderByDesc('id')->limit(6)->get(['id', 'seller_id', 'amount', 'status', 'transaction_gatway', 'product_name', 'created_at']),
+                    'transactions' => Transaction::whereBetween('created_at', [$currStart, $currEnd])
+                        ->with('buyer:id,username,email', 'sellerInfo:id,username,email')
+                        ->orderByDesc('id')->limit(6)
+                        ->get(['id', 'seller_id', 'amount', 'status', 'transaction_gatway', 'product_name', 'purpose', 'meta', 'created_at']),
                 ],
                 'revenue_series' => [
                     '7D'  => $this->salesSeries(7),
