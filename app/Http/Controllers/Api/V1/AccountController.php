@@ -102,6 +102,41 @@ class AccountController extends Controller
     }
 
     /**
+     * GET /me/orders — seller-side order history for the shop panel
+     * (/shop/orders). Only orders where this user is the seller, newest
+     * first, with shipping status + payment state for the table.
+     */
+    public function orders(Request $request)
+    {
+        $userId  = $request->user()->id;
+        $perPage = max(1, min(50, (int) $request->query('per_page', 20)));
+
+        $q = Order::query()
+            ->with(['product:id,product_name,slug,price,screen_shot', 'buyer:id,username,name,email', 'transaction:id,status,amount,created_at'])
+            ->where('seller_id', $userId)
+            ->orderByDesc('id');
+
+        if ($status = $request->query('status')) $q->where('shipping_status', $status);
+
+        $orders = $q->paginate($perPage);
+
+        $base = rtrim(config('app.url'), '/') . '/storage/products/';
+        $orders->getCollection()->transform(function (Order $order) use ($base) {
+            $raw   = $order->product?->screen_shot ?? null;
+            $names = is_array($raw) ? $raw : (json_decode((string) $raw, true) ?: preg_split('/[,;\s]+/', (string) $raw, -1, PREG_SPLIT_NO_EMPTY));
+            $first = collect($names)->map(fn ($n) => trim((string) $n))
+                ->filter(fn ($n) => $n !== '' && $n !== '[]' && $n !== '{}')
+                ->first();
+            $order->setAttribute('product_image',
+                $first ? (preg_match('~^https?://~i', $first) ? $first : $base . ltrim($first, '/')) : null);
+
+            return $order;
+        });
+
+        return $this->ok($orders);
+    }
+
+    /**
      * POST /me/avatar  (multipart)  { avatar: file }
      *
      * Stores the file on the public disk under profile/ and updates the

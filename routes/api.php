@@ -121,6 +121,7 @@ Route::prefix('v1')->group(function () {
         Route::post('me/password',                        [AccountController::class, 'changePassword']);
         Route::get ('me/transactions',                    [AccountController::class, 'transactions']);
         Route::get ('me/purchases',                       [AccountController::class, 'purchases']);
+        Route::get ('me/orders',                          [AccountController::class, 'orders']);
         Route::post('me/shop/apply',                      [ShopController::class, 'apply']);
         Route::get ('me/shop/status',                     [ShopController::class, 'status']);
 

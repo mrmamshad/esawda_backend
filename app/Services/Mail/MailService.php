@@ -79,7 +79,7 @@ class MailService
                 'product'   => $order->product,
                 'buyer'     => $order->buyer,
                 'amount'    => $this->money($order->amount),
-                'orderUrl'  => $this->frontendUrl('dashboard/orders'),
+                'orderUrl'  => $this->frontendUrl('shop/orders'),
             ],
         );
     }
@@ -103,7 +103,7 @@ class MailService
                 'product'   => $order->product,
                 'seller'    => $order->seller,
                 'amount'    => $this->money($order->amount),
-                'orderUrl'  => $this->frontendUrl('dashboard/purchases'),
+                'orderUrl'  => $this->frontendUrl('dashboard'),
             ],
         );
     }
@@ -142,7 +142,7 @@ class MailService
         $this->toPostOwner($post, 'Your ad was not approved', 'emails.ads.ad-rejected-seller', [
             'post'   => $post,
             'reason' => $reason ?: 'It did not meet our listing guidelines.',
-            'adUrl'  => $this->frontendUrl('dashboard/ads'),
+            'adUrl'  => $this->frontendUrl('shop/ads'),
         ]);
     }
 
@@ -209,7 +209,7 @@ class MailService
                 'product'=> $order->product,
                 'seller' => $order->seller,
                 'status' => (string) $order->shipping_status,
-                'orderUrl' => $this->frontendUrl('dashboard/purchases'),
+                'orderUrl' => $this->frontendUrl('dashboard'),
             ],
         );
     }
@@ -232,7 +232,7 @@ class MailService
                 'order'  => $order,
                 'product'=> $order->product,
                 'amount' => $this->money($order->amount),
-                'orderUrl' => $this->frontendUrl('dashboard/orders'),
+                'orderUrl' => $this->frontendUrl('shop/orders'),
             ],
         );
     }
