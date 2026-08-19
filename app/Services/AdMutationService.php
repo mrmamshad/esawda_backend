@@ -28,7 +28,7 @@ class AdMutationService
     public function update(Post $post, array $data, array $images = []): Post
     {
         return DB::transaction(function () use ($post, $data, $images) {
-            $post->fill($this->attrs($data, isNew: false));
+            $post->fill($this->attrs($data, isNew: false, userId: (int) $post->user_id));
             $post->status = 'pending'; // any edit re-enters moderation
             $post->save();
             if ($images) $this->syncImages($post, $images, append: true);
@@ -61,6 +61,10 @@ class AdMutationService
             'price'        => $d['price']       ?? null,
             'negotiable'   => isset($d['negotiable']) ? ($d['negotiable'] ? '1' : '0') : null,
             'phone'        => $d['phone']       ?? null,
+            'whatsapp'     => $d['whatsapp']   ?? null,
+            'bundle_items' => array_key_exists('bundle_items', $d)
+                              ? $this->resolveBundleItems($d['bundle_items'], (int) $userId)
+                              : null,
             'hide_phone'   => isset($d['hide_phone']) ? ($d['hide_phone'] ? '1' : '0') : null,
             'location'     => $d['address']     ?? null,
             'city'         => $d['city']        ?? null,
@@ -78,12 +82,34 @@ class AdMutationService
                 'view'       => 0,
                 'created_at' => now(),
                 'updated_at' => now(),
-                'expire_date'=> now()->addDays(60)->timestamp,
+                'duration_days'=> (int) ($d['duration_days'] ?? 30),
+                'expire_date'=> now()->addDays((int) ($d['duration_days'] ?? 30))->timestamp,
             ];
         } else {
             $out['updated_at'] = now();
         }
         return $out;
+    }
+
+    /**
+     * Only keep bundle ids the user actually owns and that are currently live —
+     * never trust the form for ownership/status. Returns null if any member
+     * fails, so a bad bundle is simply not persisted.
+     */
+    private function resolveBundleItems(mixed $items, int $ownerId): ?array
+    {
+        $ids = collect((array) $items)->filter(fn ($v) => is_numeric($v))->map('intval')->all();
+        if (count($ids) < 2) return null;
+
+        $owned = Post::whereIn('id', $ids)
+            ->where('user_id', $ownerId)
+            ->active()                               // live + not expired + not hidden
+            ->whereNotIn('id', function ($q) {       // bundle members can't themselves be bundles
+                $q->select('id')->from('product')->whereNotNull('bundle_items');
+            })
+            ->pluck('id')->all();
+
+        return count($owned) === count($ids) ? $ids : null;
     }
 
     private function currentImages(Post $post): array

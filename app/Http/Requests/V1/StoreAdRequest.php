@@ -3,6 +3,7 @@
 namespace App\Http\Requests\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreAdRequest extends FormRequest
 {
@@ -19,6 +20,8 @@ class StoreAdRequest extends FormRequest
             'price'        => ['required', 'integer', 'min:0'],
             'negotiable'   => ['nullable', 'boolean'],
             'phone'        => ['nullable', 'string', 'max:50'],
+            'whatsapp'     => ['nullable', 'string', 'max:50'],
+            'duration_days'=> ['nullable', 'integer', Rule::in([7, 30, 90])],
             'hide_phone'   => ['nullable', 'boolean'],
             'address'      => ['nullable', 'string', 'max:500'],
             'city'         => ['nullable', 'string', 'max:50'],
@@ -31,6 +34,8 @@ class StoreAdRequest extends FormRequest
             'images'       => ['nullable', 'array', 'max:8'],
             'images.*'     => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'custom'       => ['nullable', 'array'],   // { field_id: value }
+            'bundle_items'   => ['nullable', 'array', 'min:2', 'max:20'],
+            'bundle_items.*' => ['integer'],
         ];
     }
 }

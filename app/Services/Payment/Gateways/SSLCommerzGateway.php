@@ -143,30 +143,43 @@ class SSLCommerzGateway extends AbstractGateway
 
     /**
      * Verify SSLCommerz's hash signature. Per the v4 spec: take the
-     * verify_key's colon-separated field names, sort them, build
-     * `k1=v1&k2=v2...`, and SHA-512 the result using store_password as the
-     * salt; compare to verify_sign. Guards against forged callbacks that
-     * skip the server validation API.
+     * verify_key's comma-separated field names, sort them, append
+     * `store_passwd` (MD5 or SHA-256 of the store password, matching the
+     * algorithm SSLCommerz used), and hash the resulting `k1=v1&k2=v2...`
+     * string. Compare against verify_sign (MD5) or verify_sign_sha2
+     * (SHA-256). Guards against forged callbacks that skip the server
+     * validation API.
      */
     private function verifyHash(array $payload): bool
     {
-        $key   = (string) ($payload['verify_key']   ?? '');
-        $sign  = (string) ($payload['verify_sign']  ?? '');
+        $key   = (string) ($payload['verify_key'] ?? '');
+        $md5   = (string) ($payload['verify_sign'] ?? '');
+        $sha2  = (string) ($payload['verify_sign_sha2'] ?? '');
         $store = (string) config('sslcommerz.store_password');
 
-        if ($key === '' || $sign === '' || $store === '') return false;
+        if ($key === '' || $store === '') return false;
 
         $fields = array_filter(explode(',', $key));
-        sort($fields);
 
-        $pairs = [];
-        foreach ($fields as $f) {
-            $pairs[] = $f . '=' . (string) ($payload[$f] ?? '');
+        if ($md5 !== '') {
+            $new = [];
+            foreach ($fields as $f) $new[$f] = (string) ($payload[$f] ?? '');
+            $new['store_passwd'] = md5($store);
+            ksort($new);
+            $query = implode('&', array_map(fn ($k, $v) => $k . '=' . $v, array_keys($new), $new));
+            if (hash_equals(md5($query), $md5)) return true;
         }
-        $query  = implode('&', $pairs);
-        $digest = hash_hmac('sha512', $query, $store);
 
-        return hash_equals($digest, $sign);
+        if ($sha2 !== '') {
+            $new = [];
+            foreach ($fields as $f) $new[$f] = (string) ($payload[$f] ?? '');
+            $new['store_passwd'] = hash('sha256', $store);
+            ksort($new);
+            $query = implode('&', array_map(fn ($k, $v) => $k . '=' . $v, array_keys($new), $new));
+            if (hash_equals(hash('sha256', $query), $sha2)) return true;
+        }
+
+        return false;
     }
 
     /**

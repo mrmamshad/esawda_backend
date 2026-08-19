@@ -496,7 +496,7 @@ return new class extends Migration
             $t->increments('id');
             $t->string('group_id', 16)->default('free');
             $t->string('username')->nullable();
-            $t->enum('user_type', ['user', 'seller'])->nullable();
+            $t->enum('user_type', ['user', 'seller', 'admin'])->nullable();
             $t->string('password_hash')->nullable();
             $t->string('forgot')->nullable();
             $t->string('confirm')->nullable();

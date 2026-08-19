@@ -26,9 +26,11 @@ class AdService
 
     public function expireDueAds(): int
     {
-        // TODO(migration): port cron logic from admin/cron_logs.php + post_expire.php
-        return Post::where('expire_date', '<', time())
-                   ->where('status', 'active')
+        return Post::where('status', 'active')
+                   ->where('hide', '0')
+                   ->whereNotNull('expire_date')
+                   ->where('expire_date', '>', 0)
+                   ->where('expire_date', '<', time())
                    ->update(['status' => 'expire']);
     }
 }

@@ -16,6 +16,7 @@ class SellerMiniResource extends BaseResource
             'username'   => $this->username,
             'name'       => $this->name ?: $this->username,
             'avatar_url' => $base . ($this->image ?: 'default_user.png'),
+            'cover_url'  => $this->cover ? $base . $this->cover : null,
             'online'     => $this->bool($this->online),
             'member_since' => optional($this->created_at)->toIso8601String(),
             'phone'      => $this->bool($this->hide_phone) ? null : $this->phone,

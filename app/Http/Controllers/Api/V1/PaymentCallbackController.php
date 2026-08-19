@@ -49,7 +49,7 @@ class PaymentCallbackController extends Controller
         $tx = $this->processPayload($request->all());
 
         if ($tx && $tx->status === \App\Enums\TransactionStatus::Success) {
-            FulfilTransactionJob::dispatch($tx->id);
+            $this->fulfil($tx);
             return response()->json(['status' => 'success']);
         }
         return response()->json(['status' => $tx?->status?->value ?? 'unknown'], $tx ? 200 : 400);
@@ -61,7 +61,7 @@ class PaymentCallbackController extends Controller
     {
         $tx = $this->processPayload($request->all());
         if ($tx && $tx->status === \App\Enums\TransactionStatus::Success) {
-            FulfilTransactionJob::dispatch($tx->id);
+            $this->fulfil($tx);
         }
 
         $frontend = rtrim((string) config('sslcommerz.frontend_url', 'http://localhost:3000'), '/');
@@ -71,6 +71,19 @@ class PaymentCallbackController extends Controller
                    . '&status=' . urlencode($status);
 
         return response('', 302)->header('Location', $target);
+    }
+
+    private function fulfil(Transaction $tx): void
+    {
+        try {
+            FulfilTransactionJob::dispatchSync($tx->id);
+        } catch (\Throwable $e) {
+            Log::critical('Immediate payment fulfilment failed; queued for retry', [
+                'transaction_id' => $tx->id,
+                'error' => $e->getMessage(),
+            ]);
+            FulfilTransactionJob::dispatch($tx->id);
+        }
     }
 
     private function processPayload(array $payload): ?Transaction

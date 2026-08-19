@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Auth\Authenticatable as AuthTrait;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -15,7 +16,7 @@ use Laravel\Sanctum\HasApiTokens;
  */
 class User extends Model implements Authenticatable
 {
-    use AuthTrait, Notifiable, HasApiTokens;
+    use AuthTrait, Notifiable, HasApiTokens, HasFactory;
 
     protected $table = 'user';
 
@@ -29,13 +30,24 @@ class User extends Model implements Authenticatable
         'username', 'email', 'name', 'phone', 'city', 'country', 'address',
         'tagline', 'description', 'website', 'image', 'sex', 'postcode',
         'facebook', 'twitter', 'googleplus', 'instagram', 'linkedin', 'youtube',
-        'oauth_provider', 'oauth_link', 'created_at', 'updated_at',
+        'oauth_provider', 'oauth_link', 'shop_name', 'shop_description',
+        'shop_address', 'shop_documents', 'created_at', 'updated_at',
     ];
 
     public $timestamps = true;
 
+    protected $casts = [
+        'plan_expires_at' => 'datetime',
+        'shop_documents'  => 'array',
+        'lastactive'      => 'datetime',
+    ];
+
     protected $hidden = [
         'password_hash', 'forgot', 'forgot_expires_at', 'confirm', 'oauth_uid',
+    ];
+
+    protected $appends = [
+        'is_admin', 'is_shop',
     ];
 
     public function getAuthPassword(): string
@@ -69,13 +81,24 @@ class User extends Model implements Authenticatable
             ->exists();
     }
 
+    public function getIsAdminAttribute(): bool
+    {
+        return $this->isAdmin();
+    }
+
     /**
-     * A user becomes a "shop" the moment they have at least one Post
-     * (published, pending, sold or otherwise). This means every seller
-     * automatically gets access to the /shop dashboard.
+     * A user becomes a "shop" (corporate panel) only when they have opened
+     * a shop via onboarding (user_type = seller). Regular buyers who merely
+     * purchase products stay on the lightweight /dashboard — they never
+     * gain shop-panel access just by owning a post or making a purchase.
      */
     public function isShop(): bool
     {
-        return Post::where('user_id', $this->id)->exists();
+        return (string) ($this->user_type ?? '') === 'seller';
+    }
+
+    public function getIsShopAttribute(): bool
+    {
+        return $this->isShop();
     }
 }

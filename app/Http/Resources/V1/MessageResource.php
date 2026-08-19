@@ -23,6 +23,9 @@ class MessageResource extends BaseResource
             'to_name'    => $this->to_uname,
             'body'       => $this->message_content,
             'type'       => $this->message_type ?: 'text',   // text | image | offer | payment_request
+            'image_url'  => $this->message_type === 'image'
+                            ? rtrim(config('app.url'), '/') . '/storage/' . $this->message_content
+                            : null,
             'post_id'    => $this->post_id ? (int) $this->post_id : null,
             'seen'       => $this->bool($this->seen),
             'mine'       => $me !== null && (int) $this->from_id === (int) $me,

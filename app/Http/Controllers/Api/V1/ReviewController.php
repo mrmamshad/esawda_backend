@@ -8,6 +8,7 @@ use App\Http\Resources\V1\ReviewResource;
 use App\Models\Post;
 use App\Models\Review;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  *   GET    /api/v1/ads/{id}/reviews         list reviews on one ad
@@ -42,11 +43,19 @@ class ReviewController extends Controller
             return $this->error('SELF_REVIEW', 'You cannot review your own ad.', 422);
         }
 
+        $image = null;
+        if ($request->hasFile('image')) {
+            $name = Str::random(32) . '.' . $request->file('image')->extension();
+            $request->file('image')->storeAs('reviews', $name, 'public');
+            $image = "reviews/{$name}";
+        }
+
         $review = Review::updateOrCreate(
             ['productID' => $adId, 'user_id' => $userId],
             [
                 'rating'   => (float) $request->validated('rating'),
                 'comments' => $request->validated('comment'),
+                'image'    => $image,
                 'date'     => now()->toDateString(),
                 'publish'  => 1,
             ]

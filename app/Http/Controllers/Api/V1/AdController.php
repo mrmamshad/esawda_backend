@@ -65,6 +65,12 @@ class AdController extends Controller
         );
         $this->applyCustomFieldFilters($query, $request);
 
+        // `since_hours=N` → only ads created within the last N hours. Used by
+        // the home "Last 24 hours" section so its title is truthful.
+        if (($h = (int) $request->query('since_hours')) > 0) {
+            $query->where('created_at', '>=', now()->subHours($h));
+        }
+
         // Default sort surfaces featured/urgent first, newest last — matches the
         // "Featured" badge behaviour in the Browse-page reference.
         if (! $request->query('sort')) {
@@ -123,10 +129,29 @@ class AdController extends Controller
         abort_if($id <= 0, 404);
 
         $ad = Post::with(['category', 'subCategory', 'user', 'customData'])
-                  ->where('id', $id)->firstOrFail();
+                  ->where('id', $id)
+                  ->where(function ($q) {
+                      // Public: only active, non-hidden ads. The ad's own
+                      // author may still preview a pending/rejected ad.
+                      $q->where(fn ($inner) => $inner->where('status', 'active')->where('hide', '0')->where(function ($exp) {
+                          $exp->whereNull('expire_date')
+                              ->orWhere('expire_date', '=', 0)
+                              ->orWhere('expire_date', '>', time());
+                      }));
+                      if ($user = auth('sanctum')->user()) {
+                          $q->orWhere('user_id', $user->id);
+                      }
+                  })
+                  ->firstOrFail();
+
+        if ($ad->bundle_items) {
+            $ad->setRelation('bundleItems', Post::whereIn('id', $ad->bundle_items)->get());
+        }
 
         // Fire-and-forget view counter (no need to block the response).
-        Post::where('id', $id)->increment('view');
+        if ($ad->status->value === 'active' && $ad->hide === '0') {
+            Post::where('id', $id)->increment('view');
+        }
 
         return $this->ok(new AdDetailResource($ad));
     }

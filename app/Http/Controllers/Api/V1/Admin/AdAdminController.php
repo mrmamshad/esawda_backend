@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Post;
+use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class AdAdminController extends Controller
 {
+    public function __construct(private readonly MailService $mail) {}
+
     public function index(Request $request)
     {
         $q = Post::query()->with(['user:id,username,name', 'category']);
@@ -35,6 +39,8 @@ class AdAdminController extends Controller
     {
         $post = Post::findOrFail($id);
         $post->forceFill(['status' => 'active', 'hide' => '0', 'updated_at' => now()])->save();
+        Cache::flush();
+        $this->mail->adApprovedToSeller($post->load('user'));
         return $this->ok(['message' => 'Ad approved.', 'ad' => $post]);
     }
 
@@ -42,7 +48,8 @@ class AdAdminController extends Controller
     {
         $reason = (string) $request->input('reason', '');
         $post   = Post::findOrFail($id);
-        $post->forceFill(['status' => 'expire', 'hide' => '1', 'reject_reason' => $reason, 'updated_at' => now()])->save();
+        $post->forceFill(['status' => 'rejected', 'hide' => '1', 'reject_reason' => $reason, 'updated_at' => now()])->save();
+        $this->mail->adRejectedToSeller($post->load('user'), $reason);
         return $this->ok(['message' => 'Ad rejected.', 'ad' => $post]);
     }
 

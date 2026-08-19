@@ -47,6 +47,9 @@ return [
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+            // Local Postfix serves a self-signed cert; disable opportunistic
+            // STARTTLS so the handshake never fails on the CN mismatch.
+            'auto_tls' => env('MAIL_AUTO_TLS', false),
         ],
 
         'ses' => [

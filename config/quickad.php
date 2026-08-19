@@ -19,6 +19,10 @@ return [
     'lang'          => env('QUICKAD_DEFAULT_LANG', 'english'),
     'active_theme'  => env('QUICKAD_ACTIVE_THEME', 'thenext-theme'),
 
+    // Where site-level notifications (new seller, pending ad, transactions,
+    // contact form) are delivered.
+    'admin_email'   => env('ADMIN_EMAIL', env('MAIL_TO', 'admin@esawda.com')),
+
     // Themes shipped with the legacy project — kept identical so we can
     // port .tpl → .blade.php one theme at a time.
     'themes' => [

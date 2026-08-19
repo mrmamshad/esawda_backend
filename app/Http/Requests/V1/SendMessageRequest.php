@@ -12,7 +12,8 @@ class SendMessageRequest extends FormRequest
     {
         return [
             'to'      => ['required', 'integer', 'exists:user,id'],
-            'body'    => ['required', 'string', 'min:1', 'max:5000'],
+            'body'    => ['required_without:image', 'string', 'min:1', 'max:5000'],
+            'image'   => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:8192'],
             'type'    => ['nullable', 'string', 'in:text,image,offer,payment_request'],
             'post_id' => ['nullable', 'integer', 'exists:product,id'],
         ];

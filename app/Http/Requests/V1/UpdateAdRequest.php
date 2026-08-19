@@ -3,6 +3,7 @@
 namespace App\Http\Requests\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateAdRequest extends FormRequest
 {
@@ -21,6 +22,10 @@ class UpdateAdRequest extends FormRequest
             'price'        => ['sometimes', 'integer', 'min:0'],
             'negotiable'   => ['sometimes', 'boolean'],
             'phone'        => ['sometimes', 'nullable', 'string', 'max:50'],
+            'whatsapp'     => ['sometimes', 'nullable', 'string', 'max:50'],
+            'duration_days'=> ['sometimes', 'integer', Rule::in([7, 30, 90])],
+            'bundle_items'   => ['sometimes', 'array', 'min:2', 'max:20'],
+            'bundle_items.*' => ['integer'],
             'hide_phone'   => ['sometimes', 'boolean'],
             'address'      => ['sometimes', 'nullable', 'string', 'max:500'],
             'city'         => ['sometimes', 'nullable', 'string', 'max:50'],

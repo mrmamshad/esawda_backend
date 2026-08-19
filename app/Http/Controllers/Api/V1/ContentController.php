@@ -10,11 +10,11 @@ use App\Http\Resources\V1\PlanResource;
 use App\Http\Resources\V1\TestimonialResource;
 use App\Http\Requests\V1\ContactMessageRequest;
 use App\Models\Blog;
-use App\Models\EmailQueue;
 use App\Models\Faq;
 use App\Models\Page;
 use App\Models\Plan;
 use App\Models\Testimonial;
+use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
 
 /**
@@ -122,14 +122,8 @@ class ContentController extends Controller
     public function contact(ContactMessageRequest $request)
     {
         $data  = $request->validated();
-        $admin = (string) (config('quickad.admin_email') ?: env('MAIL_TO', 'admin@offersale.local'));
 
-        EmailQueue::enqueue(
-            $admin,
-            'site admin',
-            'Contact form: ' . ($data['subject'] ?? '(no subject)'),
-            "From: {$data['name']} <{$data['email']}>\n\n{$data['message']}",
-        );
+        app(MailService::class)->contactMessageToAdmin($data);
 
         return $this->ok(['message' => 'Thanks — your message has been sent.']);
     }

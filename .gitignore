@@ -93,3 +93,4 @@ tmp_rovodev_*
 
 ## Exclude Next.js frontend (separate repo esawda)
 /frontend
+.freebuff/

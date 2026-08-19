@@ -11,7 +11,8 @@ class Transaction extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'status' => \App\Enums\TransactionStatus::class,
+        'status'       => \App\Enums\TransactionStatus::class,
+        'fulfilled_at' => 'datetime',
     ];
 
     public function seller() { return $this->belongsTo(User::class, 'seller_id'); }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\SendMessageRequest;
 use App\Http\Resources\V1\MessageResource;
@@ -12,6 +13,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Chat endpoints powering the 4th reference page.
@@ -50,8 +52,12 @@ class MessageController extends Controller
         // Group by canonical thread key.
         $grouped = $rows->groupBy(fn (Message $m) => $this->threadKey($me, $m));
 
-        // Preload counterpart user records in one query.
-        $counterpartIds = $grouped->keys()->map(fn ($k) => (int) explode('-', $k)[1])->unique();
+        // Preload counterpart user records in one query. The "other" side of
+        // each thread is whoever is NOT me — index [1] of the key is only the
+        // counterpart when my id sorts first, so derive it via otherId().
+        $counterpartIds = $grouped->keys()
+            ->map(fn ($k) => $this->otherId($k, $me))
+            ->unique();
         $users = User::whereIn('id', $counterpartIds)->get()->keyBy('id');
 
         $threads = $grouped->map(function (Collection $msgs, string $key) use ($me, $users) {
@@ -65,6 +71,7 @@ class MessageController extends Controller
                 'counterpart_id'         => $other,
                 'counterpart_username'   => $u?->username,
                 'counterpart_name'       => $u?->name,
+                'counterpart_phone'      => $u?->phone,
                 'counterpart_image'      => $u?->image,
                 'counterpart_online'     => $u?->online,
                 'last_body'              => $last->message_content,
@@ -116,18 +123,33 @@ class MessageController extends Controller
 
         $to = User::findOrFail((int) $data['to']);
 
+        // Image message: persist the upload and reference it by stored path;
+        // the resource turns it into an absolute URL. Text keeps its body.
+        $content = $data['body'] ?? '';
+        $type    = 'text';
+        if ($request->hasFile('image')) {
+            $file  = $request->file('image');
+            $name  = Str::random(32) . '.' . $file->extension();
+            $path  = $file->storeAs('messages', $name, 'public');
+            $content = $path;
+            $type    = 'image';
+        }
+
         $msg = Message::create([
             'from_id'         => (string) $me->id,
             'to_id'           => (string) $to->id,
             'from_uname'      => $me->username,
             'to_uname'        => $to->username,
-            'message_content' => $data['body'],
+            'message_content' => $content,
             'message_date'    => now(),
-            'message_type'    => $data['type']    ?? 'text',
+            'message_type'    => $type,
             'post_id'         => $data['post_id'] ?? 0,
             'recd'            => 0,
             'seen'            => '0',
         ]);
+
+        // Broadcast message to both sender and receiver via WebSocket
+        broadcast(new MessageSent($msg))->toOthers();
 
         $msg->load('sender');
         return $this->created(new MessageResource($msg));

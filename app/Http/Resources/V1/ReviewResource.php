@@ -18,6 +18,7 @@ class ReviewResource extends BaseResource
             'id'       => (int) $this->reviewID,
             'rating'   => $this->rating !== null ? round((float) $this->rating, 1) : null,
             'comment'  => $this->comments,
+            'image'    => $this->image ? url('storage/' . $this->image) : null,
             'date'     => $this->date,
             'author'   => $author ? [
                 'id'         => (int) $author->id,

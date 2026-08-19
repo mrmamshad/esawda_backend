@@ -21,11 +21,13 @@ class AdDetailResource extends BaseResource
             'price'       => (int) $this->price,
             'negotiable'  => $this->bool($this->negotiable),
             'phone'       => $this->bool($this->hide_phone) ? null : $this->phone,
+            'whatsapp'    => $this->bool($this->hide_phone) ? null : $this->whatsapp,
             'tags'        => $this->tag ? preg_split('/\s*,\s*/', $this->tag, -1, PREG_SPLIT_NO_EMPTY) : [],
             'view_count'  => (int) $this->view,
             'featured'    => $this->bool($this->featured),
             'urgent'      => $this->bool($this->urgent),
             'highlight'   => $this->bool($this->highlight),
+            'paid'        => $this->bool($this->paid),
             'images'      => $images,
             'location'    => [
                 'city'    => $this->city,

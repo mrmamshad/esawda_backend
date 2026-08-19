@@ -23,11 +23,12 @@ class ThreadResource extends BaseResource
                 'id'         => (int) $this->counterpart_id,
                 'username'   => $this->counterpart_username,
                 'name'       => $this->counterpart_name ?: $this->counterpart_username,
+                'phone'      => $this->counterpart_phone,
                 'avatar_url' => $avatarBase . ($this->counterpart_image ?: 'default_user.png'),
                 'online'     => $this->bool($this->counterpart_online),
             ],
             'last_message'  => [
-                'body'   => $this->last_body,
+                'body'   => $this->last_type === 'image' ? '📷 Photo' : $this->last_body,
                 'type'   => $this->last_type ?: 'text',
                 'mine'   => (bool) $this->last_mine,
                 'sent_at'=> $this->last_sent_at,

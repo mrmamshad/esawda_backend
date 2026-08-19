@@ -13,6 +13,7 @@ class StoreReviewRequest extends FormRequest
         return [
             'rating'  => ['required', 'numeric', 'min:1', 'max:5'],
             'comment' => ['required', 'string', 'min:5', 'max:2000'],
+            'image'   => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
         ];
     }
 }

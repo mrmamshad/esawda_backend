@@ -34,6 +34,7 @@ class AdResource extends BaseResource
             'featured'    => $this->bool($this->featured),
             'urgent'      => $this->bool($this->urgent),
             'highlight'   => $this->bool($this->highlight),
+            'paid'        => $this->bool($this->paid),
             'location'    => [
                 'city'    => $this->city,
                 'state'   => $this->state,
@@ -58,6 +59,15 @@ class AdResource extends BaseResource
                 ] : null
             )),
             'created_at'   => optional($this->created_at)->toIso8601String(),
+            'expires_at'   => $this->unixToIso($this->expire_date),
+            'bundle_items' => $this->whenLoaded('bundleItems', fn () => $this->bundleItems
+                ? $this->bundleItems->map(fn ($p) => [
+                    'id'        => (int) $p->id,
+                    'title'     => $p->product_name,
+                    'price'     => (int) $p->price,
+                    'thumbnail' => ($imgs = $this->images($p->screen_shot)) ? $imgs[0]['thumb'] : null,
+                ])->values()
+                : null),
         ];
     }
 

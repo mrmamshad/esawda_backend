@@ -19,12 +19,14 @@ use App\Http\Controllers\Api\V1\MessageController;
 use App\Http\Controllers\Api\V1\MetaController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SellerController;
+use App\Http\Controllers\Api\V1\ShopController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Api\V1\Admin\UserAdminController;
 use App\Http\Controllers\Api\V1\Admin\AdAdminController;
 use App\Http\Controllers\Api\V1\Admin\CategoryAdminController;
 use App\Http\Controllers\Api\V1\Admin\PlanAdminController;
 use App\Http\Controllers\Api\V1\Admin\TransactionAdminController;
+use App\Http\Controllers\Api\V1\Admin\OrderAdminController;
 use App\Http\Controllers\Api\V1\Admin\BlogAdminController;
 use App\Http\Controllers\Api\V1\Admin\SettingsAdminController;
 
@@ -57,6 +59,8 @@ Route::prefix('v1')->group(function () {
     Route::post('auth/forgot',   [AuthController::class, 'forgot'])->middleware('throttle:5,1');
     Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
     Route::post('auth/reset',    [AuthController::class, 'reset'])->middleware('throttle:5,1');
+    Route::post('auth/guest-login', [AuthController::class, 'guestLogin'])->middleware('throttle:10,1');
+    Route::post('auth/guest-register', [AuthController::class, 'guestRegister'])->middleware('throttle:10,1');
 
     /* ---- Social auth (public) — Google/Facebook OAuth popup flow ------- */
     // NOTE: the insecure `auth/social/google/silent` (email-only, no token
@@ -113,8 +117,12 @@ Route::prefix('v1')->group(function () {
         /* ---- Account (self-service) ------------------------------------ */
         Route::put ('me',                                 [AccountController::class, 'updateProfile']);
         Route::post('me/avatar',                          [AccountController::class, 'uploadAvatar']);
+        Route::post('me/cover',                           [AccountController::class, 'uploadCover']);
         Route::post('me/password',                        [AccountController::class, 'changePassword']);
         Route::get ('me/transactions',                    [AccountController::class, 'transactions']);
+        Route::get ('me/purchases',                       [AccountController::class, 'purchases']);
+        Route::post('me/shop/apply',                      [ShopController::class, 'apply']);
+        Route::get ('me/shop/status',                     [ShopController::class, 'status']);
 
         /* ---- Ads (owner write) ----------------------------------------- */
         Route::post  ('ads',                              [AdMineController::class, 'store']);
@@ -148,6 +156,9 @@ Route::prefix('v1')->group(function () {
         /* ---- Checkout (SSLCommerz) ------------------------------------- */
         Route::post('checkout/plan/{planId}',             [CheckoutController::class, 'plan'])->whereNumber('planId');
         Route::post('checkout/ad-upgrade/{postId}',       [CheckoutController::class, 'adUpgrade'])->whereNumber('postId');
+        Route::post('checkout/ad-post',                   [CheckoutController::class, 'adPost']);
+        Route::post('checkout/paid-listing',              [CheckoutController::class, 'paidListing']);
+        Route::post('checkout/product-purchase/{postId}', [CheckoutController::class, 'productPurchase'])->whereNumber('postId');
         Route::get ('checkout/transactions/{id}',         [CheckoutController::class, 'status'])->whereNumber('id');
     });
 
@@ -178,6 +189,10 @@ Route::prefix('v1')->group(function () {
         Route::get   ('transactions/{id}',                [TransactionAdminController::class, 'show'])->whereNumber('id');
         Route::post  ('transactions/{id}/refund',         [TransactionAdminController::class, 'refund'])->whereNumber('id');
         Route::post  ('transactions/{id}/mark-paid',      [TransactionAdminController::class, 'markPaid'])->whereNumber('id');
+
+        Route::get   ('orders',                           [OrderAdminController::class, 'index']);
+        Route::get   ('orders/{id}',                      [OrderAdminController::class, 'show'])->whereNumber('id');
+        Route::patch ('orders/{id}',                      [OrderAdminController::class, 'update'])->whereNumber('id');
 
         Route::get   ('settings',                         [SettingsAdminController::class, 'index']);
         Route::put   ('settings',                         [SettingsAdminController::class, 'update']);

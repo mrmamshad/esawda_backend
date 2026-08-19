@@ -7,10 +7,12 @@ use App\Http\Requests\V1\ChangePasswordRequest;
 use App\Http\Requests\V1\UpdateProfileRequest;
 use App\Http\Resources\V1\TransactionResource;
 use App\Http\Resources\V1\UserResource;
+use App\Models\Order;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * /api/v1/me/*  (authenticated)
@@ -63,6 +65,43 @@ class AccountController extends Controller
     }
 
     /**
+     * GET /me/purchases — buyer-side order history for the lightweight
+     * /dashboard. Only orders where this user is the buyer.
+     */
+    public function purchases(Request $request)
+    {
+        $userId  = $request->user()->id;
+        $perPage = max(1, min(50, (int) $request->query('per_page', 20)));
+
+        $q = Order::query()
+            ->with(['product:id,product_name,slug,price,screen_shot', 'seller:id,username,name,image', 'transaction:id,status,amount,created_at'])
+            ->where('buyer_id', $userId)
+            ->orderByDesc('id');
+
+        if ($status = $request->query('status')) $q->where('shipping_status', $status);
+
+        $orders = $q->paginate($perPage);
+
+        // Legacy `product.screen_shot` is a JSON array / comma list of
+        // filenames. Flatten to a single absolute image URL the dashboard
+        // can put straight in <img src>.
+        $base = rtrim(config('app.url'), '/') . '/storage/products/';
+        $orders->getCollection()->transform(function (Order $order) use ($base) {
+            $raw   = $order->product?->screen_shot ?? null;
+            $names = is_array($raw) ? $raw : (json_decode((string) $raw, true) ?: preg_split('/[,;\s]+/', (string) $raw, -1, PREG_SPLIT_NO_EMPTY));
+            $first = collect($names)->map(fn ($n) => trim((string) $n))
+                ->filter(fn ($n) => $n !== '' && $n !== '[]' && $n !== '{}')
+                ->first();
+            $order->setAttribute('product_image',
+                $first ? (preg_match('~^https?://~i', $first) ? $first : $base . ltrim($first, '/')) : null);
+
+            return $order;
+        });
+
+        return $this->ok($orders);
+    }
+
+    /**
      * POST /me/avatar  (multipart)  { avatar: file }
      *
      * Stores the file on the public disk under profile/ and updates the
@@ -76,18 +115,52 @@ class AccountController extends Controller
         ]);
 
         $user = $request->user();
-        // Store under profile/ so the web URL /storage/profile/<file> matches
-        // the base every UserResource/SellerResource hardcodes. (Previously
-        // uploaded to users/avatars/, which 404'd against that base.)
-        $path = $data['avatar']->store('profile', 'public');
+        // Store inside profile/; keep the bare filename in DB — resources
+        // already prepend /storage/profile/ (storing "profile/…" in DB
+        // double-prefixed and 404'd; storing at disk root 404'd too).
+        $name = Str::random(32) . '.' . $data['avatar']->getClientOriginalExtension();
+        $data['avatar']->storeAs('profile', $name, 'public');
 
         // Best-effort cleanup of the previous file (skip default seeds).
         if ($user->image && ! str_starts_with($user->image, 'default_')) {
-            Storage::disk('public')->delete($user->image);
+            Storage::disk('public')->delete('profile/' . $user->image);
         }
 
         $user->forceFill([
-            'image'      => $path,
+            'image'      => $name,
+            'updated_at' => now(),
+        ])->save();
+
+        return response()->json([
+            'data' => ['user' => (new UserResource($user))->resolve()],
+        ]);
+    }
+
+    /**
+     * POST /me/cover  (multipart)  { cover: file }
+     *
+     * Cover banner for the shop's public store page. Same storage pattern as
+     * the avatar — profile/ on the public disk, mirroring the /storage/profile/
+     * base every resource hardcodes.
+     */
+    public function uploadCover(Request $request)
+    {
+        $data = $request->validate([
+            'cover' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $user = $request->user();
+        $name = Str::random(32) . '.' . $data['cover']->getClientOriginalExtension();
+        // Store inside the profile/ folder; keep only the bare filename in DB
+        // — resources already prepend /storage/profile/.
+        $data['cover']->storeAs('profile', $name, 'public');
+
+        if ($user->cover && ! str_starts_with($user->cover, 'default_')) {
+            Storage::disk('public')->delete('profile/' . $user->cover);
+        }
+
+        $user->forceFill([
+            'cover'      => $name,
             'updated_at' => now(),
         ])->save();
 

@@ -18,10 +18,23 @@ class Post extends Model
         'updated_at' => 'datetime',
         'price'      => 'integer',
         'view'       => 'integer',
+        'expire_date' => 'integer',
         'status'     => \App\Enums\PostStatus::class,
+        'bundle_items' => 'array',
     ];
 
-    public function scopeActive($q)    { return $q->where('status', 'active')->where('hide', '0'); }
+    // Only ads whose expiry hasn't passed are live. expire_date is an epoch
+    // timestamp (0/null = never expires, which the legacy import left behind).
+    public function scopeActive($q)
+    {
+        return $q->where('status', 'active')
+                 ->where('hide', '0')
+                 ->where(function ($inner) {
+                     $inner->whereNull('expire_date')
+                           ->orWhere('expire_date', '=', 0)
+                           ->orWhere('expire_date', '>', time());
+                 });
+    }
     public function scopePending($q)   { return $q->where('status', 'pending'); }
     public function scopeExpired($q)   { return $q->where('status', 'expire'); }
     public function scopeFeatured($q)  { return $q->where('featured', '1'); }

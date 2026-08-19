@@ -11,7 +11,10 @@ use App\Http\Resources\V1\AdResource;
 use App\Models\Post;
 use App\Services\AdMutationService;
 use App\Services\AdStatsService;
+use App\Services\Mail\MailService;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Owner-side write and management endpoints:
@@ -30,18 +33,56 @@ class AdMineController extends Controller
     public function __construct(
         private readonly AdMutationService $svc,
         private readonly AdStatsService $stats,
+        private readonly MailService $mail,
     ) {}
 
     public function store(StoreAdRequest $request)
     {
-        $post = $this->svc->create(
-            $request->user()->id,
-            $request->validated(),
-            (array) $request->file('images', [])
-        );
+        $post = DB::transaction(function () use ($request) {
+            $user = User::query()->lockForUpdate()->findOrFail($request->user()->id);
+
+            // The row lock makes quota consumption safe when multiple listing
+            // requests arrive at the same time.
+            if (! $this->canPostFree($user)) {
+                return null;
+            }
+
+            $post = $this->svc->create(
+                $user->id,
+                $request->validated(),
+                (array) $request->file('images', [])
+            );
+
+            $user->forceFill([
+                'ads_remaining' => (int) $user->ads_remaining - 1,
+                'updated_at' => now(),
+            ])->save();
+
+            return $post;
+        });
+
+        if (! $post) {
+            return $this->error(
+                'SUBSCRIPTION_REQUIRED',
+                'No subscription listing slots remain. Choose pay per listing or renew your plan.',
+                402
+            );
+        }
+
+        $this->mail->pendingAdToAdmin($post->load('user'));
+
         return $this->created(new AdDetailResource(
-            $post->load(['category', 'subCategory', 'user', 'customData'])
+            $this->attachBundleItems($post->load(['category', 'subCategory', 'user', 'customData']))
         ));
+    }
+
+    /**
+     * True when the user holds an unexpired plan and still has quota.
+     */
+    private function canPostFree($user): bool
+    {
+        $hasPlan = ! empty($user->plan_expires_at) && $user->plan_expires_at->isFuture();
+        return $hasPlan && (int) $user->ads_remaining > 0;
     }
 
     public function update(int $id, UpdateAdRequest $request)
@@ -49,8 +90,9 @@ class AdMineController extends Controller
         $post = Post::findOrFail($id);
         $this->authorize('update', $post);
         $post = $this->svc->update($post, $request->validated(), (array) $request->file('images', []));
+        $this->mail->pendingAdToAdmin($post->load('user'));
         return $this->ok(new AdDetailResource(
-            $post->load(['category', 'subCategory', 'user', 'customData'])
+            $this->attachBundleItems($post->load(['category', 'subCategory', 'user', 'customData']))
         ));
     }
 
@@ -87,7 +129,8 @@ class AdMineController extends Controller
             'hide'     => $post->forceFill(['hide' => '1', 'updated_at' => now()])->save(),
             'unhide'   => $post->forceFill(['hide' => '0', 'updated_at' => now()])->save(),
             'resubmit' => $post->forceFill(['status' => 'pending', 'hide' => '0', 'updated_at' => now(),
-                                            'expire_date' => now()->addDays(60)->timestamp])->save(),
+                                            'duration_days' => $days = (int) ($request->input('duration_days', 30) ?? 30),
+                                            'expire_date' => now()->addDays($days)->timestamp])->save(),
             'sold-out' => $post->forceFill(['status' => 'sold_out',  'updated_at' => now()])->save(),
             'restock'  => $post->forceFill(['status' => 'active',    'updated_at' => now()])->save(),
             'remove'   => $post->forceFill(['status' => 'removed', 'hide' => '1', 'updated_at' => now()])->save(),
@@ -117,7 +160,18 @@ class AdMineController extends Controller
         if ($c = $request->query('condition')) $q->where('condition', $c);
 
         $q->with(['category', 'subCategory'])->orderByDesc('id');
-        return $this->ok(AdResource::collection($q->paginate($this->perPage($request, 12))));
+        $rows = $q->paginate($this->perPage($request, 12));
+        $rows->getCollection()->map(fn (Post $p) => $this->attachBundleItems($p));
+        return $this->ok(AdResource::collection($rows));
+    }
+
+    /** Preload a post's bundle members so resources can render items. */
+    private function attachBundleItems(Post $post): Post
+    {
+        if ($post->bundle_items) {
+            $post->setRelation('bundleItems', Post::whereIn('id', $post->bundle_items)->get());
+        }
+        return $post;
     }
 
     /**
