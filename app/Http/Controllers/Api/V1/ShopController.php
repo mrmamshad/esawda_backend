@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\UserResource;
+use App\Models\Option;
 use App\Models\User;
 use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
@@ -63,10 +64,31 @@ class ShopController extends Controller
         $this->mail->shopOpenedToSeller($user);
         $this->mail->newShopToAdmin($user);
 
+        $this->grantShopTrialQuota($user);
+
         return $this->ok([
             'message' => 'Your shop is open.',
             'user'    => (new UserResource($user))->resolve(),
         ]);
+    }
+
+    /**
+     * First-time listing allowance for new shops. New sellers get a free
+     * trial quota so they can post a few products before subscribing.
+     * No-op once the user already has a future-dated plan or quota.
+     */
+    private function grantShopTrialQuota(User $user): void
+    {
+        if ($user->plan_expires_at?->isFuture()) return;
+
+        $quota = (int) (Option::where('option_name', 'guest_ads_quota')->value('option_value') ?? 5);
+        if ($quota <= 0) return;
+
+        $user->forceFill([
+            'plan_expires_at' => now()->addDays(30),
+            'ads_remaining'   => (int) $user->ads_remaining + $quota,
+            'updated_at'      => now(),
+        ])->save();
     }
 
     /**
