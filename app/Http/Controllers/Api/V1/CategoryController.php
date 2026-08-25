@@ -44,7 +44,12 @@ class CategoryController extends Controller
             }
 
             if ($withCounts) {
-                $query->withCount(['posts as ads_count' => fn ($a) => $a->active()]);
+                $query->withCount([
+                    'posts as ads_count' => fn ($a) => $a->active(),
+                    // Per-condition totals power the homepage Used/New toggle.
+                    'posts as new_count' => fn ($a) => $a->active()->where('condition', 'new'),
+                    'posts as used_count' => fn ($a) => $a->active()->where('condition', 'used'),
+                ]);
             }
 
             return CategoryResource::collection($query->get());

@@ -28,6 +28,8 @@ class CategoryResource extends BaseResource
             'icon' => $this->icon,                                    // font-awesome class (legacy)
             'picture_url' => $picUrl,
             'ads_count' => $this->when(isset($this->ads_count), fn () => (int) $this->ads_count),
+            'new_count' => $this->when(isset($this->new_count), fn () => (int) $this->new_count),
+            'used_count' => $this->when(isset($this->used_count), fn () => (int) $this->used_count),
             'sub_categories' => SubCategoryResource::collection(
                 $this->whenLoaded('subCategories')
             ),
