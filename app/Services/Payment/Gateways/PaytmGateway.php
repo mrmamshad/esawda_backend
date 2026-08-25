@@ -8,9 +8,13 @@ namespace App\Services\Payment\Gateways;
  */
 class PaytmGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'paytm'; }
-    public function label(): string { return 'Paytm'; }
+    public function slug(): string
+    {
+        return 'paytm';
+    }
 
-    // TODO(migration): implement gateway-specific SDK flow from
-    // includes/payments/paytm/*.php
+    public function label(): string
+    {
+        return 'Paytm';
+    }
 }

@@ -12,16 +12,24 @@ use Stripe\Stripe;
  */
 class StripeGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'stripe'; }
-    public function label(): string { return 'Stripe'; }
+    public function slug(): string
+    {
+        return 'stripe';
+    }
+
+    public function label(): string
+    {
+        return 'Stripe';
+    }
 
     public function initiate(Transaction $tx): mixed
     {
         $secret = $this->conf('secret');
-        if (! $secret) {
+        if (!$secret) {
             $tx->status = 'pending';
             $tx->transaction_gatway = $this->slug();
             $tx->save();
+
             return route('payment', ['access_token' => $tx->id, 'i' => $this->slug(), 'status' => 'pending']);
         }
         Stripe::setApiKey($secret);
@@ -32,17 +40,18 @@ class StripeGateway extends AbstractGateway
                 'price_data' => [
                     'currency' => $this->conf('currency', 'usd'),
                     'unit_amount' => (int) round(((float) $tx->amount) * 100),
-                    'product_data' => ['name' => $tx->product_name ?? ('Transaction #' . $tx->id)],
+                    'product_data' => ['name' => $tx->product_name ?? ('Transaction #'.$tx->id)],
                 ],
             ]],
-            'success_url' => route('payment.ipn', ['i' => 'stripe']) . '?tx=' . $tx->id . '&result=success&session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url'  => route('payment.ipn', ['i' => 'stripe']) . '?tx=' . $tx->id . '&result=cancel',
+            'success_url' => route('payment.ipn', ['i' => 'stripe']).'?tx='.$tx->id.'&result=success&session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url' => route('payment.ipn', ['i' => 'stripe']).'?tx='.$tx->id.'&result=cancel',
             'metadata' => ['transaction_id' => (string) $tx->id],
         ]);
         $tx->payment_id = $session->id;
-        $tx->status     = 'pending';
+        $tx->status = 'pending';
         $tx->transaction_gatway = $this->slug();
         $tx->save();
+
         return $session->url;
     }
 
@@ -68,6 +77,7 @@ class StripeGateway extends AbstractGateway
             $tx->status = 'cancel';
         }
         $tx->save();
+
         return $tx;
     }
 }

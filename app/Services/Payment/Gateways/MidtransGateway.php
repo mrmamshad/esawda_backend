@@ -8,9 +8,13 @@ namespace App\Services\Payment\Gateways;
  */
 class MidtransGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'midtrans'; }
-    public function label(): string { return 'Midtrans'; }
+    public function slug(): string
+    {
+        return 'midtrans';
+    }
 
-    // TODO(migration): implement gateway-specific SDK flow from
-    // includes/payments/midtrans/*.php
+    public function label(): string
+    {
+        return 'Midtrans';
+    }
 }

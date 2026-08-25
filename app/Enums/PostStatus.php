@@ -9,12 +9,12 @@ namespace App\Enums;
  */
 enum PostStatus: string
 {
-    case Active   = 'active';
-    case Pending  = 'pending';
-    case Expire   = 'expire';
-    case SoldOut  = 'sold_out';
-    case Removed  = 'removed';
-    case Draft    = 'draft';
+    case Active = 'active';
+    case Pending = 'pending';
+    case Expire = 'expire';
+    case SoldOut = 'sold_out';
+    case Removed = 'removed';
+    case Draft = 'draft';
     case Rejected = 'rejected';
 
     /** All states the shop dashboard reports per-status counts for. */

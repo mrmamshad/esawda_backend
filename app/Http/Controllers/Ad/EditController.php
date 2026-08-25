@@ -15,20 +15,25 @@ class EditController extends Controller
 
     public function index(Request $request, ?string $id = null)
     {
-        if (! $this->auth->check($request)) return redirect()->route('auth.login');
-        if (! $id) abort(404);
+        if (!$this->auth->check($request)) {
+            return redirect()->route('auth.login');
+        }
+        if (!$id) {
+            abort(404);
+        }
 
         $post = Post::where('id', $id)->where('user_id', session('user.id'))->firstOrFail();
 
         if ($request->isMethod('post') && $request->filled('submit')) {
             $post->fill($request->only([
-                'product_name','description','category','sub_category',
-                'price','phone','city','state','country','tag','negotiable','hide_phone',
+                'product_name', 'description', 'category', 'sub_category',
+                'price', 'phone', 'city', 'state', 'country', 'tag', 'negotiable', 'hide_phone',
             ]));
             $post->updated_at = now();
             $post->status = 'pending'; // legacy: re-approval required on edit
             $post->save();
             session()->flash('flash_success', 'Ad updated — pending re-approval.');
+
             return redirect()->route('ad.mine');
         }
 

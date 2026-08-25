@@ -2,21 +2,23 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\TransactionResource\Pages\CreateTransaction;
+use App\Filament\Resources\TransactionResource\Pages\EditTransaction;
+use App\Filament\Resources\TransactionResource\Pages\ListTransactions;
 use App\Models\Transaction;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use App\Filament\Resources\TransactionResource\Pages\ListTransactions;
-use App\Filament\Resources\TransactionResource\Pages\CreateTransaction;
-use App\Filament\Resources\TransactionResource\Pages\EditTransaction;
 
 /** Legacy admin: `admin/transactions.php`. */
 class TransactionResource extends Resource
 {
     protected static ?string $model = Transaction::class;
-    protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
+
+    protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+
     protected static ?string $navigationGroup = 'Billing';
 
     public static function form(Form $form): Form
@@ -48,9 +50,9 @@ class TransactionResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListTransactions::route('/'),
+            'index' => ListTransactions::route('/'),
             'create' => CreateTransaction::route('/create'),
-            'edit'   => EditTransaction::route('/{record}/edit'),
+            'edit' => EditTransaction::route('/{record}/edit'),
         ];
     }
 }

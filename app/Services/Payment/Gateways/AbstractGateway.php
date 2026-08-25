@@ -2,6 +2,7 @@
 
 namespace App\Services\Payment\Gateways;
 
+use App\Enums\TransactionStatus;
 use App\Models\Transaction;
 use App\Services\Payment\PaymentGatewayInterface;
 
@@ -13,6 +14,7 @@ use App\Services\Payment\PaymentGatewayInterface;
 abstract class AbstractGateway implements PaymentGatewayInterface
 {
     abstract public function slug(): string;
+
     abstract public function label(): string;
 
     public function initiate(Transaction $tx): mixed
@@ -21,6 +23,7 @@ abstract class AbstractGateway implements PaymentGatewayInterface
         $tx->status = 'pending';
         $tx->transaction_gatway = $this->slug();
         $tx->save();
+
         return route('payment', ['access_token' => $tx->id, 'i' => $this->slug()]);
     }
 
@@ -43,15 +46,16 @@ abstract class AbstractGateway implements PaymentGatewayInterface
             );
         }
 
-        $tx->status     = $claimed;
+        $tx->status = $claimed;
         $tx->payment_id = $payload['payment_id'] ?? $tx->payment_id;
         $tx->save();
+
         return $tx;
     }
 
     public function verify(Transaction $tx): bool
     {
-        return $tx->status === \App\Enums\TransactionStatus::Success;
+        return $tx->status === TransactionStatus::Success;
     }
 
     /** Shortcut for reading `config('quickad.gateways.{slug}.key')` etc. */

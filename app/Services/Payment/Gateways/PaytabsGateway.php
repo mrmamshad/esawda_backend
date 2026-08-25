@@ -8,9 +8,13 @@ namespace App\Services\Payment\Gateways;
  */
 class PaytabsGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'paytabs'; }
-    public function label(): string { return 'PayTabs'; }
+    public function slug(): string
+    {
+        return 'paytabs';
+    }
 
-    // TODO(migration): implement gateway-specific SDK flow from
-    // includes/payments/paytabs/*.php
+    public function label(): string
+    {
+        return 'PayTabs';
+    }
 }

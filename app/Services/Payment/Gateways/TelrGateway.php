@@ -8,9 +8,13 @@ namespace App\Services\Payment\Gateways;
  */
 class TelrGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'telr'; }
-    public function label(): string { return 'Telr'; }
+    public function slug(): string
+    {
+        return 'telr';
+    }
 
-    // TODO(migration): implement gateway-specific SDK flow from
-    // includes/payments/telr/*.php
+    public function label(): string
+    {
+        return 'Telr';
+    }
 }

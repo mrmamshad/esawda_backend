@@ -16,18 +16,20 @@ class ReportController extends Controller
         if ($request->isMethod('post') && $request->filled('post_id')) {
             $data = $request->validate([
                 'post_id' => 'required|integer',
-                'email'   => 'required|email',
-                'reason'  => 'required|string',
+                'email' => 'required|email',
+                'reason' => 'required|string',
                 'details' => 'required|string|max:2000',
             ]);
             AuditLog::create([
-                'log_date'    => time(),
-                'log_summary' => 'Report ad #' . $data['post_id'] . ' [' . $data['reason'] . ']',
+                'log_date' => time(),
+                'log_summary' => 'Report ad #'.$data['post_id'].' ['.$data['reason'].']',
                 'log_details' => json_encode($data),
             ]);
             session()->flash('flash_success', 'Thank you — the report has been received.');
+
             return back();
         }
+
         return $this->theme->render('report');
     }
 }

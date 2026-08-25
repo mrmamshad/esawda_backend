@@ -121,7 +121,7 @@ class ListingPaymentWorkflowTest extends TestCase
             'category' => 1,
             'condition' => 'used',
         ])->assertStatus(402)
-          ->assertJsonPath('error.code', 'SUBSCRIPTION_REQUIRED');
+            ->assertJsonPath('error.code', 'SUBSCRIPTION_REQUIRED');
 
         $this->assertDatabaseMissing('product', ['product_name' => 'No Quota Product']);
     }

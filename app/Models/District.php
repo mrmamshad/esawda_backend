@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class District extends Model
 {
     protected $table = 'subadmin2';
+
     public $timestamps = false;
+
     protected $guarded = [];
 }

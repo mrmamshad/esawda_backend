@@ -8,9 +8,13 @@ namespace App\Services\Payment\Gateways;
  */
 class TwoCheckoutGateway extends AbstractGateway
 {
-    public function slug(): string  { return '2checkout'; }
-    public function label(): string { return '2Checkout'; }
+    public function slug(): string
+    {
+        return '2checkout';
+    }
 
-    // TODO(migration): implement gateway-specific SDK flow from
-    // includes/payments/2checkout/*.php
+    public function label(): string
+    {
+        return '2Checkout';
+    }
 }

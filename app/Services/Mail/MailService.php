@@ -7,7 +7,6 @@ use App\Models\Order;
 use App\Models\Post;
 use App\Models\Transaction;
 use App\Models\User;
-use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Mail;
 
 /**
@@ -24,8 +23,8 @@ class MailService
     public function send(string $to, string $toName, string $subject, string $view, array $data = []): void
     {
         $data += [
-            'subject'      => $subject,
-            'frontendUrl'  => $this->frontendUrl(),
+            'subject' => $subject,
+            'frontendUrl' => $this->frontendUrl(),
         ];
 
         Mail::to($to, $toName)->queue(new Transactional($subject, $view, $data));
@@ -48,23 +47,24 @@ class MailService
     public function frontendUrl(string $path = ''): string
     {
         $base = rtrim((string) explode(',', (string) env('FRONTEND_URLS', 'http://localhost:3000'))[0], '/');
-        return $path ? $base . '/' . ltrim($path, '/') : $base;
+
+        return $path ? $base.'/'.ltrim($path, '/') : $base;
     }
 
     public function money(float|int $amount): string
     {
-        return '৳' . number_format((float) $amount, 2);
+        return '৳'.number_format((float) $amount, 2);
     }
 
     /* --------------------------------------------------------------- */
-    /* Order + payment events                                          */
+    /* Order + payment events */
     /* --------------------------------------------------------------- */
 
     /** S1 — Seller: a buyer placed a new order. */
     public function newOrderToSeller(Order $order): void
     {
         $seller = $order->seller;
-        if (! $seller || ! $seller->email) {
+        if (!$seller || !$seller->email) {
             return;
         }
 
@@ -74,12 +74,12 @@ class MailService
             'New order received',
             'emails.orders.new-order-seller',
             [
-                'seller'    => $seller,
-                'order'     => $order,
-                'product'   => $order->product,
-                'buyer'     => $order->buyer,
-                'amount'    => $this->money($order->amount),
-                'orderUrl'  => $this->frontendUrl('shop/orders'),
+                'seller' => $seller,
+                'order' => $order,
+                'product' => $order->product,
+                'buyer' => $order->buyer,
+                'amount' => $this->money($order->amount),
+                'orderUrl' => $this->frontendUrl('shop/orders'),
             ],
         );
     }
@@ -88,7 +88,7 @@ class MailService
     public function paymentSuccessToBuyer(Order $order): void
     {
         $buyer = $order->buyer;
-        if (! $buyer || ! $buyer->email) {
+        if (!$buyer || !$buyer->email) {
             return;
         }
 
@@ -98,12 +98,12 @@ class MailService
             'Payment received — order confirmed',
             'emails.orders.payment-success-buyer',
             [
-                'buyer'     => $buyer,
-                'order'     => $order,
-                'product'   => $order->product,
-                'seller'    => $order->seller,
-                'amount'    => $this->money($order->amount),
-                'orderUrl'  => $this->frontendUrl('dashboard'),
+                'buyer' => $buyer,
+                'order' => $order,
+                'product' => $order->product,
+                'seller' => $order->seller,
+                'amount' => $this->money($order->amount),
+                'orderUrl' => $this->frontendUrl('dashboard'),
             ],
         );
     }
@@ -112,27 +112,27 @@ class MailService
     public function transactionToAdmin(Transaction $tx, ?Order $order = null): void
     {
         $this->sendToAdmin(
-            'Transaction #' . $tx->id . ' — ' . strtoupper((string) $tx->purpose),
+            'Transaction #'.$tx->id.' — '.strtoupper((string) $tx->purpose),
             'emails.admin.transaction-notice',
             [
-                'tx'        => $tx,
-                'order'     => $order,
-                'amount'    => $this->money($tx->amount),
-                'customer'  => $order?->buyer ?? $tx->seller,
+                'tx' => $tx,
+                'order' => $order,
+                'amount' => $this->money($tx->amount),
+                'customer' => $order?->buyer ?? $tx->seller,
             ],
         );
     }
 
     /* --------------------------------------------------------------- */
-    /* Ad moderation events                                            */
+    /* Ad moderation events */
     /* --------------------------------------------------------------- */
 
     /** S3 — Seller: ad approved and published. */
     public function adApprovedToSeller(Post $post): void
     {
         $this->toPostOwner($post, 'Your ad is now live', 'emails.ads.ad-approved-seller', [
-            'post'  => $post,
-            'adUrl' => $this->frontendUrl('ads/' . $post->id . '-' . ($post->slug ?: 'ad')),
+            'post' => $post,
+            'adUrl' => $this->frontendUrl('ads/'.$post->id.'-'.($post->slug ?: 'ad')),
         ]);
     }
 
@@ -140,9 +140,9 @@ class MailService
     public function adRejectedToSeller(Post $post, string $reason): void
     {
         $this->toPostOwner($post, 'Your ad was not approved', 'emails.ads.ad-rejected-seller', [
-            'post'   => $post,
+            'post' => $post,
             'reason' => $reason ?: 'It did not meet our listing guidelines.',
-            'adUrl'  => $this->frontendUrl('shop/ads'),
+            'adUrl' => $this->frontendUrl('shop/ads'),
         ]);
     }
 
@@ -156,13 +156,13 @@ class MailService
     }
 
     /* --------------------------------------------------------------- */
-    /* Shop events                                                      */
+    /* Shop events */
     /* --------------------------------------------------------------- */
 
     /** S6 — Seller: shop opened welcome. */
     public function shopOpenedToSeller(User $user): void
     {
-        if (! $user->email) {
+        if (!$user->email) {
             return;
         }
 
@@ -172,7 +172,7 @@ class MailService
             'Welcome to the eSawda shop',
             'emails.shop.shop-opened-seller',
             [
-                'user'  => $user,
+                'user' => $user,
                 'shopUrl' => $this->frontendUrl('dashboard'),
             ],
         );
@@ -187,26 +187,26 @@ class MailService
     }
 
     /* --------------------------------------------------------------- */
-    /* Order lifecycle events                                          */
+    /* Order lifecycle events */
     /* --------------------------------------------------------------- */
 
     /** B5 — Buyer: shipping status changed. */
     public function shippingUpdateToBuyer(Order $order): void
     {
         $buyer = $order->buyer;
-        if (! $buyer || ! $buyer->email) {
+        if (!$buyer || !$buyer->email) {
             return;
         }
 
         $this->send(
             $buyer->email,
             $buyer->name ?: $buyer->username,
-            'Order status updated — ' . strtoupper((string) $order->shipping_status),
+            'Order status updated — '.strtoupper((string) $order->shipping_status),
             'emails.orders.shipping-update-buyer',
             [
-                'buyer'  => $buyer,
-                'order'  => $order,
-                'product'=> $order->product,
+                'buyer' => $buyer,
+                'order' => $order,
+                'product' => $order->product,
                 'seller' => $order->seller,
                 'status' => (string) $order->shipping_status,
                 'orderUrl' => $this->frontendUrl('dashboard'),
@@ -218,19 +218,19 @@ class MailService
     public function sellerPaidToSeller(Order $order): void
     {
         $seller = $order->seller;
-        if (! $seller || ! $seller->email) {
+        if (!$seller || !$seller->email) {
             return;
         }
 
         $this->send(
             $seller->email,
             $seller->name ?: $seller->username,
-            'Payment released for order #' . $order->id,
+            'Payment released for order #'.$order->id,
             'emails.orders.seller-paid',
             [
                 'seller' => $seller,
-                'order'  => $order,
-                'product'=> $order->product,
+                'order' => $order,
+                'product' => $order->product,
                 'amount' => $this->money($order->amount),
                 'orderUrl' => $this->frontendUrl('shop/orders'),
             ],
@@ -241,18 +241,18 @@ class MailService
     public function refundedToBuyer(Transaction $tx, ?Order $order = null): void
     {
         $buyer = $order?->buyer ?? $tx->seller;
-        if (! $buyer || ! $buyer->email) {
+        if (!$buyer || !$buyer->email) {
             return;
         }
 
         $this->send(
             $buyer->email,
             $buyer->name ?: $buyer->username,
-            'Refund issued for transaction #' . $tx->id,
+            'Refund issued for transaction #'.$tx->id,
             'emails.transactions.refunded-buyer',
             [
-                'buyer'  => $buyer,
-                'tx'     => $tx,
+                'buyer' => $buyer,
+                'tx' => $tx,
                 'amount' => $this->money($tx->amount),
             ],
         );
@@ -261,7 +261,7 @@ class MailService
     /** B3 — User: subscription plan activated/renewed. */
     public function planActivatedToUser(?User $user): void
     {
-        if (! $user || ! $user->email) {
+        if (!$user || !$user->email) {
             return;
         }
 
@@ -271,22 +271,22 @@ class MailService
             'Your eSawda plan is active',
             'emails.plans.plan-activated',
             [
-                'user'     => $user,
+                'user' => $user,
                 'planName' => $user->group_id ?: 'Premium',
-                'expiresAt'=> optional($user->plan_expires_at)->format('d M Y'),
+                'expiresAt' => optional($user->plan_expires_at)->format('d M Y'),
                 'dashboardUrl' => $this->frontendUrl('dashboard'),
             ],
         );
     }
 
     /* --------------------------------------------------------------- */
-    /* Auth / content events                                           */
+    /* Auth / content events */
     /* --------------------------------------------------------------- */
 
     /** B6 — User: password reset link. */
     public function passwordReset(User $user, string $resetUrl): void
     {
-        if (! $user->email) {
+        if (!$user->email) {
             return;
         }
 
@@ -296,7 +296,7 @@ class MailService
             'Reset your eSawda password',
             'emails.auth.password-reset',
             [
-                'user'     => $user,
+                'user' => $user,
                 'resetUrl' => $resetUrl,
             ],
         );
@@ -308,7 +308,7 @@ class MailService
         $data['body'] = $data['message'] ?? '';
 
         $this->sendToAdmin(
-            'Contact form: ' . ($data['subject'] ?? '(no subject)'),
+            'Contact form: '.($data['subject'] ?? '(no subject)'),
             'emails.admin.contact-notice',
             $data,
         );
@@ -319,7 +319,7 @@ class MailService
     private function toPostOwner(Post $post, string $subject, string $view, array $data): void
     {
         $owner = $post->user;
-        if (! $owner || ! $owner->email) {
+        if (!$owner || !$owner->email) {
             return;
         }
 

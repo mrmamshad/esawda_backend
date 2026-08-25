@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
 use App\Jobs\FulfilTransactionJob;
 use App\Models\Transaction;
@@ -48,10 +49,12 @@ class PaymentCallbackController extends Controller
         Log::info('SSLCommerz IPN received', $request->all());
         $tx = $this->processPayload($request->all());
 
-        if ($tx && $tx->status === \App\Enums\TransactionStatus::Success) {
+        if ($tx && $tx->status === TransactionStatus::Success) {
             $this->fulfil($tx);
+
             return response()->json(['status' => 'success']);
         }
+
         return response()->json(['status' => $tx?->status?->value ?? 'unknown'], $tx ? 200 : 400);
     }
 
@@ -60,15 +63,15 @@ class PaymentCallbackController extends Controller
     private function handleAndRedirect(Request $request, string $expected): Response
     {
         $tx = $this->processPayload($request->all());
-        if ($tx && $tx->status === \App\Enums\TransactionStatus::Success) {
+        if ($tx && $tx->status === TransactionStatus::Success) {
             $this->fulfil($tx);
         }
 
         $frontend = rtrim((string) config('sslcommerz.frontend_url', 'http://localhost:3000'), '/');
-        $status   = $tx?->status?->value ?? $expected;
-        $target   = $frontend . '/membership/' . ($status === 'success' ? 'success' : 'failed')
-                   . '?tx=' . urlencode((string) ($tx?->id ?? ''))
-                   . '&status=' . urlencode($status);
+        $status = $tx?->status?->value ?? $expected;
+        $target = $frontend.'/membership/'.($status === 'success' ? 'success' : 'failed')
+                   .'?tx='.urlencode((string) ($tx?->id ?? ''))
+                   .'&status='.urlencode($status);
 
         return response('', 302)->header('Location', $target);
     }
@@ -91,9 +94,9 @@ class PaymentCallbackController extends Controller
         try {
             return $this->manager->get('sslcommerz')->handleCallback($payload);
         } catch (\Throwable $e) {
-            Log::error('SSLCommerz callback processing failed: ' . $e->getMessage(), $payload);
+            Log::error('SSLCommerz callback processing failed: '.$e->getMessage(), $payload);
+
             return null;
         }
     }
-
 }

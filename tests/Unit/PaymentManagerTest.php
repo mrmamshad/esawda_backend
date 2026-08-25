@@ -15,14 +15,14 @@ class PaymentManagerTest extends TestCase
 {
     public function test_only_sslcommerz_is_registered(): void
     {
-        $available = (new PaymentManager())->available();
+        $available = (new PaymentManager)->available();
         $this->assertCount(1, $available);
         $this->assertArrayHasKey('sslcommerz', $available);
     }
 
     public function test_resolves_sslcommerz(): void
     {
-        $gw = (new PaymentManager())->get('sslcommerz');
+        $gw = (new PaymentManager)->get('sslcommerz');
         $this->assertInstanceOf(SSLCommerzGateway::class, $gw);
         $this->assertSame('sslcommerz', $gw->slug());
         $this->assertNotEmpty($gw->label());
@@ -31,6 +31,6 @@ class PaymentManagerTest extends TestCase
     public function test_rejects_unknown_slug(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        (new PaymentManager())->get('paypal');
+        (new PaymentManager)->get('paypal');
     }
 }

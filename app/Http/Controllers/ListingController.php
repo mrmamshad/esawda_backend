@@ -28,24 +28,28 @@ class ListingController extends Controller
     public function category(Request $request, ?string $cat = null, ?string $subcat = null)
     {
         $request->query->add(['cat' => $cat, 'subcat' => $subcat]);
+
         return $this->render($request);
     }
 
     public function subCategory(Request $request, ?string $subcat = null, ?string $slug = null)
     {
         $request->query->add(['subcat' => $subcat]);
+
         return $this->render($request);
     }
 
     public function city(Request $request, ?string $city = null)
     {
         $request->query->add(['city' => $city]);
+
         return $this->render($request);
     }
 
     public function keywords(Request $request, ?string $keywords = null)
     {
         $request->query->add(['keywords' => $keywords]);
+
         return $this->render($request);
     }
 
@@ -54,11 +58,12 @@ class ListingController extends Controller
         try {
             $items = $this->listing->search($request);
             $data = [
-                'items'         => $items,
-                'total'         => $items->total(),
-                'categories'    => Category::orderBy('cat_order')->get(),
+                'items' => $items,
+                'total' => $items->total(),
+                'categories' => Category::orderBy('cat_order')->get(),
                 'subcategories' => SubCategory::orderBy('cat_order')->get(),
             ];
+
             return $this->theme->render('ad-listing', $data);
         } catch (\Throwable) {
             // Theme view may reference undefined variables until Phase 4b (view data-binding

@@ -13,24 +13,34 @@ use Illuminate\Support\Facades\Schema;
  *
  * Guarded: FULLTEXT requires MySQL/MariaDB InnoDB; skipped on sqlite/tests.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
-        if (! Schema::hasTable('product')) return;
+        if (!Schema::hasTable('product')) {
+            return;
+        }
         $driver = Schema::getConnection()->getDriverName();
-        if (! in_array($driver, ['mysql', 'mariadb'], true)) return;
+        if (!in_array($driver, ['mysql', 'mariadb'], true)) {
+            return;
+        }
 
-        DB::statement('ALTER TABLE ' . DB::getTablePrefix() . 'product ADD FULLTEXT idx_product_fulltext (product_name, description, tag)');
+        DB::statement('ALTER TABLE '.DB::getTablePrefix().'product ADD FULLTEXT idx_product_fulltext (product_name, description, tag)');
     }
 
     public function down(): void
     {
-        if (! Schema::hasTable('product')) return;
+        if (!Schema::hasTable('product')) {
+            return;
+        }
         $driver = Schema::getConnection()->getDriverName();
-        if (! in_array($driver, ['mysql', 'mariadb'], true)) return;
+        if (!in_array($driver, ['mysql', 'mariadb'], true)) {
+            return;
+        }
 
         try {
-            DB::statement('ALTER TABLE ' . DB::getTablePrefix() . 'product DROP INDEX idx_product_fulltext');
-        } catch (\Throwable $e) { /* ignore */ }
+            DB::statement('ALTER TABLE '.DB::getTablePrefix().'product DROP INDEX idx_product_fulltext');
+        } catch (Throwable $e) { /* ignore */
+        }
     }
 };

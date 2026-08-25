@@ -11,15 +11,16 @@ use Illuminate\Support\Facades\Schema;
  * queries rely on. No columns added or removed; rollback drops the
  * indexes only. Safe on existing production data.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         if (Schema::hasTable('product')) {
             Schema::table('product', function (Blueprint $t) {
                 // Browse: active ads filtered by category / city / country.
                 $t->index(['status', 'hide', 'category'], 'idx_product_browse_cat');
-                $t->index(['status', 'hide', 'city'],     'idx_product_browse_city');
-                $t->index(['status', 'hide', 'country'],  'idx_product_browse_country');
+                $t->index(['status', 'hide', 'city'], 'idx_product_browse_city');
+                $t->index(['status', 'hide', 'country'], 'idx_product_browse_country');
                 // Featured / promo rails (ORDER BY featured DESC, id DESC).
                 $t->index(['featured', 'urgent', 'highlight'], 'idx_product_promo');
                 // Owner dashboard scans by user.
@@ -29,7 +30,7 @@ return new class extends Migration {
 
         if (Schema::hasTable('messages')) {
             Schema::table('messages', function (Blueprint $t) {
-                $t->index(['to_id', 'seen'],           'idx_messages_inbox_unseen');
+                $t->index(['to_id', 'seen'], 'idx_messages_inbox_unseen');
                 $t->index(['from_id', 'to_id', 'message_date'], 'idx_messages_thread');
             });
         }
@@ -50,10 +51,15 @@ return new class extends Migration {
     public function down(): void
     {
         $drop = function (string $table, array $indexes): void {
-            if (! Schema::hasTable($table)) return;
+            if (!Schema::hasTable($table)) {
+                return;
+            }
             Schema::table($table, function (Blueprint $t) use ($indexes) {
                 foreach ($indexes as $ix) {
-                    try { $t->dropIndex($ix); } catch (\Throwable $e) { /* ignore */ }
+                    try {
+                        $t->dropIndex($ix);
+                    } catch (Throwable $e) { /* ignore */
+                    }
                 }
             });
         };
@@ -63,7 +69,7 @@ return new class extends Migration {
             'idx_product_user_status',
         ]);
         $drop('messages', ['idx_messages_inbox_unseen', 'idx_messages_thread']);
-        $drop('favads',   ['idx_favads_user_product']);
-        $drop('reviews',  ['idx_reviews_product_publish']);
+        $drop('favads', ['idx_favads_user_product']);
+        $drop('reviews', ['idx_reviews_product_publish']);
     }
 };

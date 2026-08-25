@@ -16,10 +16,11 @@ class EnsureLegacyLogin
 
     public function handle(Request $request, Closure $next)
     {
-        if (! $this->auth->check($request)) {
+        if (!$this->auth->check($request)) {
             return redirect()->route('auth.login')
                 ->with('flash_error', 'Please login to continue.');
         }
+
         return $next($request);
     }
 }

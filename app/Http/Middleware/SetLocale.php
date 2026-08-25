@@ -17,7 +17,7 @@ class SetLocale
 {
     public function handle(Request $request, Closure $next)
     {
-        $available = ['en','fr','de','es','it','pt','ru','ar','hi','ja','tr','zh','pl','bn','vi','th','ro','bg','he','ur','sv'];
+        $available = ['en', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'ja', 'tr', 'zh', 'pl', 'bn', 'vi', 'th', 'ro', 'bg', 'he', 'ur', 'sv'];
 
         if ($request->has('lang')) {
             $lang = $request->query('lang');
@@ -29,6 +29,7 @@ class SetLocale
         if (in_array($current, $available, true)) {
             App::setLocale($current);
         }
+
         return $next($request);
     }
 }

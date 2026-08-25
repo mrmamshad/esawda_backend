@@ -32,31 +32,31 @@ class AuthController extends Controller
         $data = $request->validated();
 
         $user = User::forceCreate([
-            'username'      => $data['username'],
-            'email'         => $data['email'],
-            'name'          => $data['name']  ?? $data['username'],
-            'phone'         => $data['phone'] ?? null,
+            'username' => $data['username'],
+            'email' => $data['email'],
+            'name' => $data['name'] ?? $data['username'],
+            'phone' => $data['phone'] ?? null,
             'password_hash' => Hash::make($data['password']),
-            'status'        => '1',
-            'group_id'      => 'free',
-            'user_type'     => 'user',
-            'image'         => 'default_user.png',
-            'created_at'    => now(),
-            'updated_at'    => now(),
+            'status' => '1',
+            'group_id' => 'free',
+            'user_type' => 'user',
+            'image' => 'default_user.png',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $token = $user->createToken('spa')->plainTextToken;
 
         return $this->withAuthCookie($this->created([
-            'user'  => (new UserResource($user))->resolve(),
+            'user' => (new UserResource($user))->resolve(),
             'token' => $token,
         ]), $token);
     }
 
     public function login(LoginRequest $request)
     {
-        $data  = $request->validated();
-        $id    = $data['identifier'];
+        $data = $request->validated();
+        $id = $data['identifier'];
 
         // Accept email, username, or phone — guest accounts are created
         // with a phone, so "phone + password" must just work. Several users
@@ -66,7 +66,7 @@ class AuthController extends Controller
             $q->where('email', $id)->orWhere('username', $id)->orWhere('phone', $id);
         })->get();
         $user = $candidates->first(fn ($u) => Hash::check($data['password'], (string) $u->password_hash));
-        if (! $user) {
+        if (!$user) {
             return $this->error('INVALID_CREDENTIALS', 'Email or password is incorrect.', 401);
         }
         if ((string) $user->status === '0') {
@@ -78,7 +78,7 @@ class AuthController extends Controller
         $token = $user->createToken($data['device'] ?? 'spa')->plainTextToken;
 
         return $this->withAuthCookie($this->ok([
-            'user'  => (new UserResource($user))->resolve(),
+            'user' => (new UserResource($user))->resolve(),
             'token' => $token,
         ]), $token);
     }
@@ -99,25 +99,25 @@ class AuthController extends Controller
      */
     public function guestLogin(GuestLoginRequest $request)
     {
-        $data   = $request->validated();
+        $data = $request->validated();
         $mobile = trim((string) $data['mobile']);
-        $name   = trim((string) $data['name']);
+        $name = trim((string) $data['name']);
 
         /** @var User|null $user */
         $user = User::where('phone', $mobile)->first();
 
-        if (! $user) {
+        if (!$user) {
             $user = User::forceCreate([
-                'username'      => $this->uniqueGuestUsername($mobile),
-                'name'          => $name,
-                'phone'         => $mobile,
+                'username' => $this->uniqueGuestUsername($mobile),
+                'name' => $name,
+                'phone' => $mobile,
                 'password_hash' => Hash::make(Str::random(64)),
-                'status'        => '1',
-                'group_id'      => 'free',
-                'user_type'     => 'user',
-                'image'         => 'default_user.png',
-                'created_at'    => now(),
-                'updated_at'    => now(),
+                'status' => '1',
+                'group_id' => 'free',
+                'user_type' => 'user',
+                'image' => 'default_user.png',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         } elseif ((string) $user->status === '0') {
             return $this->error('ACCOUNT_DISABLED', 'This account is disabled.', 403);
@@ -128,7 +128,7 @@ class AuthController extends Controller
         $token = $user->createToken($data['device'] ?? 'guest')->plainTextToken;
 
         return $this->withAuthCookie($this->ok([
-            'user'  => (new UserResource($user))->resolve(),
+            'user' => (new UserResource($user))->resolve(),
             'token' => $token,
         ]), $token);
     }
@@ -145,25 +145,25 @@ class AuthController extends Controller
      */
     public function guestRegister(GuestRegisterRequest $request)
     {
-        $data   = $request->validated();
+        $data = $request->validated();
         $mobile = trim((string) $data['mobile']);
-        $name   = trim((string) $data['name']);
+        $name = trim((string) $data['name']);
 
         /** @var User|null $user */
         $user = User::where('phone', $mobile)->first();
 
-        if (! $user) {
+        if (!$user) {
             $user = User::forceCreate([
-                'username'      => $this->uniqueGuestUsername($mobile),
-                'name'          => $name,
-                'phone'         => $mobile,
+                'username' => $this->uniqueGuestUsername($mobile),
+                'name' => $name,
+                'phone' => $mobile,
                 'password_hash' => Hash::make($data['password']),
-                'status'        => '1',
-                'group_id'      => 'free',
-                'user_type'     => 'user',
-                'image'         => 'default_user.png',
-                'created_at'    => now(),
-                'updated_at'    => now(),
+                'status' => '1',
+                'group_id' => 'free',
+                'user_type' => 'user',
+                'image' => 'default_user.png',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
             $this->grantGuestAds($user);
         } elseif ((string) $user->status === '0') {
@@ -172,14 +172,14 @@ class AuthController extends Controller
 
         $user->forceFill([
             'password_hash' => Hash::make($data['password']),
-            'lastactive'    => now(),
-            'online'        => '1',
+            'lastactive' => now(),
+            'online' => '1',
         ])->save();
 
         $token = $user->createToken($data['device'] ?? 'guest')->plainTextToken;
 
         return $this->withAuthCookie($this->ok([
-            'user'  => (new UserResource($user))->resolve(),
+            'user' => (new UserResource($user))->resolve(),
             'token' => $token,
         ]), $token);
     }
@@ -192,42 +192,49 @@ class AuthController extends Controller
     private function grantGuestAds(User $user): void
     {
         $quota = (int) (Option::where('option_name', 'guest_ads_quota')->value('option_value') ?? 5);
-        if ($quota <= 0) return;
+        if ($quota <= 0) {
+            return;
+        }
 
-        if ($user->plan_expires_at?->isFuture() && (int) $user->ads_remaining >= $quota) return;
+        if ($user->plan_expires_at?->isFuture() && (int) $user->ads_remaining >= $quota) {
+            return;
+        }
 
         $user->forceFill([
             'plan_expires_at' => $user->plan_expires_at?->isFuture()
                 ? $user->plan_expires_at
                 : now()->addDays(30),
-            'ads_remaining'   => (int) $user->ads_remaining + $quota,
-            'updated_at'      => now(),
+            'ads_remaining' => (int) $user->ads_remaining + $quota,
+            'updated_at' => now(),
         ])->save();
     }
 
     private function uniqueGuestUsername(string $mobile): string
     {
-        $base = 'guest' . preg_replace('/\D+/', '', $mobile);
+        $base = 'guest'.preg_replace('/\D+/', '', $mobile);
         $base = $base ?: 'guestuser';
         $base = substr($base, 0, 40);
         $candidate = $base;
         $i = 1;
         while (User::where('username', $candidate)->exists()) {
-            $candidate = substr($base, 0, 34) . '_' . $i;
+            $candidate = substr($base, 0, 34).'_'.$i;
             $i++;
         }
+
         return $candidate;
     }
 
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
+
         return $this->withClearedAuthCookie($this->ok(['message' => 'Logged out.']));
     }
 
     public function logoutAll(Request $request)
     {
         $request->user()->tokens()->delete();
+
         return $this->ok(['message' => 'All sessions revoked.']);
     }
 
@@ -238,15 +245,16 @@ class AuthController extends Controller
         if ($user) {
             $token = Str::random(64);
             $user->forceFill([
-                'forgot'           => $token,
+                'forgot' => $token,
                 'forgot_expires_at' => now()->addMinutes(60),
             ])->save();
 
             $resetUrl = rtrim(env('FRONTEND_URLS', 'http://localhost:3000'), ',')
-                      . '/auth/reset?token=' . urlencode($token);
+                      .'/auth/reset?token='.urlencode($token);
 
-            app(\App\Services\Mail\MailService::class)->passwordReset($user, $resetUrl);
+            app(MailService::class)->passwordReset($user, $resetUrl);
         }
+
         return $this->ok(['message' => 'If the email exists, a reset link has been sent.']);
     }
 
@@ -255,22 +263,23 @@ class AuthController extends Controller
         $data = $request->validated();
 
         $user = User::where('forgot', $data['token'])->first();
-        if (! $user) {
+        if (!$user) {
             return $this->error('INVALID_TOKEN', 'Reset token is invalid or has been used.', 422);
         }
 
         // Token expires 60 minutes after issue; clear it on use (single-use).
         if ($user->forgot_expires_at && now()->greaterThan($user->forgot_expires_at)) {
             $user->forceFill(['forgot' => null, 'forgot_expires_at' => null])->save();
+
             return $this->error('INVALID_TOKEN', 'Reset token has expired.', 422);
         }
 
         DB::transaction(function () use ($user, $data) {
             $user->forceFill([
-                'password_hash'    => Hash::make($data['password']),
-                'forgot'           => null,
+                'password_hash' => Hash::make($data['password']),
+                'forgot' => null,
                 'forgot_expires_at' => null,
-                'updated_at'       => now(),
+                'updated_at' => now(),
             ])->save();
             $user->tokens()->delete(); // revoke every existing session
         });
@@ -278,7 +287,7 @@ class AuthController extends Controller
         $token = $user->createToken('spa')->plainTextToken;
 
         return $this->withAuthCookie($this->ok([
-            'user'  => (new UserResource($user))->resolve(),
+            'user' => (new UserResource($user))->resolve(),
             'token' => $token,
         ]), $token);
     }

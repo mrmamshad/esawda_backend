@@ -1,7 +1,6 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\XmlController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes — Legacy Blade Frontend DISABLED
@@ -18,7 +17,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-use App\Http\Controllers\XmlController;
+use Illuminate\Support\Facades\Route;
 
 // ---- Kept live -----------------------------------------------------------
 Route::get('/sitemap.xml', [XmlController::class, 'index'])->name('sitemap.xml');
@@ -26,10 +25,10 @@ Route::get('/sitemap.xml', [XmlController::class, 'index'])->name('sitemap.xml')
 Route::get('/', function () {
     // Root now advertises the new SPA. Change target once frontend is deployed.
     return response()->json([
-        'name'    => config('app.name'),
-        'status'  => 'API only — visit the offersale. frontend',
-        'api'     => url('/api/v1'),
-        'admin'   => url('/admin'),
+        'name' => config('app.name'),
+        'status' => 'API only — visit the offersale. frontend',
+        'api' => url('/api/v1'),
+        'admin' => url('/admin'),
     ]);
 });
 

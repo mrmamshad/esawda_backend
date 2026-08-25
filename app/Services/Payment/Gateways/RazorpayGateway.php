@@ -8,9 +8,13 @@ namespace App\Services\Payment\Gateways;
  */
 class RazorpayGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'razorpay'; }
-    public function label(): string { return 'Razorpay'; }
+    public function slug(): string
+    {
+        return 'razorpay';
+    }
 
-    // TODO(migration): implement gateway-specific SDK flow from
-    // includes/payments/razorpay/*.php
+    public function label(): string
+    {
+        return 'Razorpay';
+    }
 }

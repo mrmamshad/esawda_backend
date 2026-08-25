@@ -41,8 +41,8 @@ class CheckoutController extends Controller
             'cadence' => ['nullable', 'in:monthly,annual'],
         ]);
         $cadence = $data['cadence'] ?? 'monthly';
-        $amount  = (float) ($cadence === 'annual'
-            ? ($plan->annual_price  ?? $plan->price ?? 0)
+        $amount = (float) ($cadence === 'annual'
+            ? ($plan->annual_price ?? $plan->price ?? 0)
             : ($plan->monthly_price ?? $plan->price ?? 0));
 
         if ($amount <= 0) {
@@ -50,27 +50,27 @@ class CheckoutController extends Controller
         }
 
         $tx = Transaction::create([
-            'seller_id'          => $user->id,
-            'product_id'         => 0,
-            'product_name'       => 'Plan: ' . ($plan->name ?? "#{$plan->id}"),
-            'plan_id'            => $plan->id,
-            'amount'             => $amount,
+            'seller_id' => $user->id,
+            'product_id' => 0,
+            'product_name' => 'Plan: '.($plan->name ?? "#{$plan->id}"),
+            'plan_id' => $plan->id,
+            'amount' => $amount,
             'transaction_gatway' => 'sslcommerz',
-            'status'             => 'pending',
-            'purpose'            => 'plan',
-            'meta'               => json_encode(['cadence' => $cadence]),
-            'created_at'         => now(),
-            'updated_at'         => now(),
+            'status' => 'pending',
+            'purpose' => 'plan',
+            'meta' => json_encode(['cadence' => $cadence]),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $url = $this->manager->get('sslcommerz')->initiate($tx);
-        if (! $url) {
+        if (!$url) {
             return $this->error('GATEWAY_INIT_FAILED', 'Could not start the payment session. Please try again.', 502);
         }
 
         return $this->ok([
             'transaction_id' => $tx->id,
-            'gateway_url'    => $url,
+            'gateway_url' => $url,
         ]);
     }
 
@@ -78,8 +78,8 @@ class CheckoutController extends Controller
     public function adUpgrade(int $postId, Request $request)
     {
         $data = $request->validate([
-            'featured'  => ['sometimes', 'boolean'],
-            'urgent'    => ['sometimes', 'boolean'],
+            'featured' => ['sometimes', 'boolean'],
+            'urgent' => ['sometimes', 'boolean'],
             'highlight' => ['sometimes', 'boolean'],
         ]);
 
@@ -90,13 +90,13 @@ class CheckoutController extends Controller
         // (Settings → Premium upgrades). Defaults match the historical values.
         $settings = Option::pluck('option_value', 'option_name');
         $prices = [
-            'featured'  => (float) ($settings['upgrade_featured_price']  ?? 200),
-            'urgent'    => (float) ($settings['upgrade_urgent_price']    ?? 150),
+            'featured' => (float) ($settings['upgrade_featured_price'] ?? 200),
+            'urgent' => (float) ($settings['upgrade_urgent_price'] ?? 150),
             'highlight' => (float) ($settings['upgrade_highlight_price'] ?? 100),
         ];
 
         $amount = collect($prices)
-            ->filter(fn ($price, $flag) => ! empty($data[$flag]))
+            ->filter(fn ($price, $flag) => !empty($data[$flag]))
             ->sum();
 
         if ($amount <= 0) {
@@ -104,26 +104,26 @@ class CheckoutController extends Controller
         }
 
         $tx = Transaction::create([
-            'seller_id'          => $request->user()->id,
-            'product_id'         => $post->id,
-            'product_name'       => 'Ad boost: ' . ($post->product_name ?? "#{$post->id}"),
-            'amount'             => $amount,
+            'seller_id' => $request->user()->id,
+            'product_id' => $post->id,
+            'product_name' => 'Ad boost: '.($post->product_name ?? "#{$post->id}"),
+            'amount' => $amount,
             'transaction_gatway' => 'sslcommerz',
-            'status'             => 'pending',
-            'purpose'            => 'ad_upgrade',
-            'meta'               => json_encode($data),
-            'created_at'         => now(),
-            'updated_at'         => now(),
+            'status' => 'pending',
+            'purpose' => 'ad_upgrade',
+            'meta' => json_encode($data),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $url = $this->manager->get('sslcommerz')->initiate($tx);
-        if (! $url) {
+        if (!$url) {
             return $this->error('GATEWAY_INIT_FAILED', 'Could not start the payment session.', 502);
         }
 
         return $this->ok([
             'transaction_id' => $tx->id,
-            'gateway_url'    => $url,
+            'gateway_url' => $url,
         ]);
     }
 
@@ -153,38 +153,38 @@ class CheckoutController extends Controller
 
         DB::transaction(function () use ($post, $buyer, $amount, &$tx, &$order) {
             $tx = Transaction::create([
-                'seller_id'          => $buyer->id,
-                'product_id'         => $post->id,
-                'product_name'       => 'Purchase: ' . ($post->product_name ?? "#{$post->id}"),
-                'amount'             => $amount,
+                'seller_id' => $buyer->id,
+                'product_id' => $post->id,
+                'product_name' => 'Purchase: '.($post->product_name ?? "#{$post->id}"),
+                'amount' => $amount,
                 'transaction_gatway' => 'sslcommerz',
-                'status'             => 'pending',
-                'purpose'            => 'product_purchase',
-                'meta'               => json_encode(['buyer_id' => $buyer->id, 'seller_id' => $post->user_id]),
-                'created_at'         => now(),
-                'updated_at'         => now(),
+                'status' => 'pending',
+                'purpose' => 'product_purchase',
+                'meta' => json_encode(['buyer_id' => $buyer->id, 'seller_id' => $post->user_id]),
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             $order = Order::create([
-                'product_id'     => $post->id,
-                'buyer_id'       => $buyer->id,
-                'seller_id'      => $post->user_id,
+                'product_id' => $post->id,
+                'buyer_id' => $buyer->id,
+                'seller_id' => $post->user_id,
                 'transaction_id' => $tx->id,
-                'amount'         => $amount,
-                'shipping_status'=> 'pending',
-                'seller_paid'    => false,
+                'amount' => $amount,
+                'shipping_status' => 'pending',
+                'seller_paid' => false,
             ]);
         });
 
         $url = $this->manager->get('sslcommerz')->initiate($tx);
-        if (! $url) {
+        if (!$url) {
             return $this->error('GATEWAY_INIT_FAILED', 'Could not start the payment session.', 502);
         }
 
         return $this->ok([
             'transaction_id' => $tx->id,
-            'order_id'       => $order->id,
-            'gateway_url'    => $url,
+            'order_id' => $order->id,
+            'gateway_url' => $url,
         ]);
     }
 
@@ -192,17 +192,17 @@ class CheckoutController extends Controller
     public function status(int $id, Request $request)
     {
         $tx = Transaction::where('id', $id)
-                          ->where('seller_id', $request->user()->id)
-                          ->firstOrFail();
+            ->where('seller_id', $request->user()->id)
+            ->firstOrFail();
 
         return $this->ok([
-            'id'         => $tx->id,
-            'status'     => $tx->status?->value ?? 'pending',
-            'amount'     => (float) $tx->amount,
-            'gateway'    => $tx->transaction_gatway,
-            'purpose'    => $tx->purpose ?? null,
-            'plan_id'    => $tx->plan_id ?? null,
-            'post_id'    => $tx->product_id ?? null,
+            'id' => $tx->id,
+            'status' => $tx->status?->value ?? 'pending',
+            'amount' => (float) $tx->amount,
+            'gateway' => $tx->transaction_gatway,
+            'purpose' => $tx->purpose ?? null,
+            'plan_id' => $tx->plan_id ?? null,
+            'post_id' => $tx->product_id ?? null,
             'created_at' => (string) $tx->created_at,
         ]);
     }
@@ -231,7 +231,7 @@ class CheckoutController extends Controller
         $tx = Transaction::create([
             'seller_id' => $request->user()->id,
             'product_id' => $post->id,
-            'product_name' => 'Paid listing: ' . $post->product_name,
+            'product_name' => 'Paid listing: '.$post->product_name,
             'amount' => $amount,
             'transaction_gatway' => 'sslcommerz',
             'status' => 'pending',
@@ -241,9 +241,10 @@ class CheckoutController extends Controller
         ]);
 
         $url = $this->manager->get('sslcommerz')->initiate($tx);
-        if (! $url) {
+        if (!$url) {
             $tx->forceFill(['status' => 'failed', 'updated_at' => now()])->save();
             $post->forceFill(['status' => 'removed', 'hide' => '1', 'updated_at' => now()])->save();
+
             return $this->error('GATEWAY_INIT_FAILED', 'Could not start secure payment. Please try again.', 502);
         }
 
@@ -262,18 +263,18 @@ class CheckoutController extends Controller
     public function adPost(Request $request)
     {
         $data = $request->validate([
-            'plan_id'             => ['required', 'exists:plans,id'],
-            'ad_data'             => ['required', 'array'],
-            'ad_data.title'       => ['required', 'string', 'min:3', 'max:150'],
+            'plan_id' => ['required', 'exists:plans,id'],
+            'ad_data' => ['required', 'array'],
+            'ad_data.title' => ['required', 'string', 'min:3', 'max:150'],
             'ad_data.description' => ['required', 'string', 'min:10'],
-            'ad_data.price'       => ['required', 'integer', 'min:0'],
-            'ad_data.category'    => ['required', 'integer', 'exists:catagory_main,cat_id'],
-            'ad_data.condition'   => ['required', 'in:new,used'],
+            'ad_data.price' => ['required', 'integer', 'min:0'],
+            'ad_data.category' => ['required', 'integer', 'exists:catagory_main,cat_id'],
+            'ad_data.condition' => ['required', 'in:new,used'],
             'ad_data.sub_category' => ['nullable', 'integer', 'exists:catagory_sub,sub_cat_id'],
-            'ad_data.phone'       => ['nullable', 'string', 'max:50'],
-            'ad_data.address'     => ['nullable', 'string', 'max:500'],
-            'ad_data.city'        => ['nullable', 'string', 'max:50'],
-            'ad_data.country'     => ['nullable', 'string', 'max:50'],
+            'ad_data.phone' => ['nullable', 'string', 'max:50'],
+            'ad_data.address' => ['nullable', 'string', 'max:500'],
+            'ad_data.city' => ['nullable', 'string', 'max:50'],
+            'ad_data.country' => ['nullable', 'string', 'max:50'],
         ]);
 
         $plan = Plan::findOrFail($data['plan_id']);
@@ -285,28 +286,28 @@ class CheckoutController extends Controller
 
         // Store ad data in transaction meta - will be created after payment
         $tx = Transaction::create([
-            'seller_id'          => $request->user()->id,
-            'product_id'         => 0, // not created yet
-            'product_name'       => 'Ad Posting: ' . $data['ad_data']['title'],
-            'plan_id'            => $plan->id,
-            'amount'             => $amount,
+            'seller_id' => $request->user()->id,
+            'product_id' => 0, // not created yet
+            'product_name' => 'Ad Posting: '.$data['ad_data']['title'],
+            'plan_id' => $plan->id,
+            'amount' => $amount,
             'transaction_gatway' => 'sslcommerz',
-            'status'             => 'pending',
-            'purpose'            => 'ad_post',
-            'meta'               => json_encode($data['ad_data']),
-            'created_at'         => now(),
-            'updated_at'         => now(),
+            'status' => 'pending',
+            'purpose' => 'ad_post',
+            'meta' => json_encode($data['ad_data']),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $url = $this->manager->get('sslcommerz')->initiate($tx);
 
-        if (! $url) {
+        if (!$url) {
             return $this->error('GATEWAY_INIT_FAILED', 'Could not start payment session. Please try again.', 502);
         }
 
         return $this->ok([
             'transaction_id' => $tx->id,
-            'gateway_url'    => $url,
+            'gateway_url' => $url,
         ]);
     }
 }

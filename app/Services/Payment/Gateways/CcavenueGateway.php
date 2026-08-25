@@ -8,9 +8,13 @@ namespace App\Services\Payment\Gateways;
  */
 class CcavenueGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'ccavenue'; }
-    public function label(): string { return 'CCAvenue'; }
+    public function slug(): string
+    {
+        return 'ccavenue';
+    }
 
-    // TODO(migration): implement gateway-specific SDK flow from
-    // includes/payments/ccavenue/*.php
+    public function label(): string
+    {
+        return 'CCAvenue';
+    }
 }

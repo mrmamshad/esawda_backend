@@ -8,9 +8,13 @@ namespace App\Services\Payment\Gateways;
  */
 class FlutterwaveGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'flutterwave'; }
-    public function label(): string { return 'Flutterwave'; }
+    public function slug(): string
+    {
+        return 'flutterwave';
+    }
 
-    // TODO(migration): implement gateway-specific SDK flow from
-    // includes/payments/flutterwave/*.php
+    public function label(): string
+    {
+        return 'Flutterwave';
+    }
 }

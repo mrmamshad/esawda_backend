@@ -2,21 +2,23 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\PlanResource\Pages\CreatePlan;
+use App\Filament\Resources\PlanResource\Pages\EditPlan;
+use App\Filament\Resources\PlanResource\Pages\ListPlans;
 use App\Models\Plan;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use App\Filament\Resources\PlanResource\Pages\ListPlans;
-use App\Filament\Resources\PlanResource\Pages\CreatePlan;
-use App\Filament\Resources\PlanResource\Pages\EditPlan;
 
 /** Legacy admin: `admin/membership_plan.php`. */
 class PlanResource extends Resource
 {
     protected static ?string $model = Plan::class;
-    protected static ?string $navigationIcon  = 'heroicon-o-currency-dollar';
+
+    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
+
     protected static ?string $navigationGroup = 'Billing';
 
     public static function form(Form $form): Form
@@ -45,9 +47,9 @@ class PlanResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListPlans::route('/'),
+            'index' => ListPlans::route('/'),
             'create' => CreatePlan::route('/create'),
-            'edit'   => EditPlan::route('/{record}/edit'),
+            'edit' => EditPlan::route('/{record}/edit'),
         ];
     }
 }

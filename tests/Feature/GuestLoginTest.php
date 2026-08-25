@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Events\MessageSent;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
@@ -15,7 +15,7 @@ class GuestLoginTest extends TestCase
     public function test_guest_login_creates_guest_user(): void
     {
         $res = $this->postJson('/api/v1/auth/guest-login', [
-            'name'   => 'Guest Buyer',
+            'name' => 'Guest Buyer',
             'mobile' => '01711111111',
         ]);
 
@@ -56,24 +56,24 @@ class GuestLoginTest extends TestCase
         Event::fake([MessageSent::class]);
 
         $seller = User::create([
-            'username'      => 'seller-guest-test',
-            'email'         => 'seller-guest-test@example.com',
-            'name'          => 'Seller',
+            'username' => 'seller-guest-test',
+            'email' => 'seller-guest-test@example.com',
+            'name' => 'Seller',
             'password_hash' => bcrypt('secret123'),
-            'status'        => '1',
-            'group_id'      => 'free',
-            'created_at'    => now(),
-            'updated_at'    => now(),
+            'status' => '1',
+            'group_id' => 'free',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $login = $this->postJson('/api/v1/auth/guest-login', [
-            'name'   => 'Guest',
+            'name' => 'Guest',
             'mobile' => '01744444444',
         ])->assertOk()->json('data');
         $token = $login['token'];
 
         $res = $this->withToken($token)->postJson('/api/v1/messages', [
-            'to'   => $seller->id,
+            'to' => $seller->id,
             'body' => 'Hello, is this still available?',
         ]);
 

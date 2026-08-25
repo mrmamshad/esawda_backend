@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Auth\Authenticatable as AuthTrait;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
@@ -16,7 +16,7 @@ use Laravel\Sanctum\HasApiTokens;
  */
 class User extends Model implements Authenticatable
 {
-    use AuthTrait, Notifiable, HasApiTokens, HasFactory;
+    use AuthTrait, HasApiTokens, HasFactory, Notifiable;
 
     protected $table = 'user';
 
@@ -38,8 +38,8 @@ class User extends Model implements Authenticatable
 
     protected $casts = [
         'plan_expires_at' => 'datetime',
-        'shop_documents'  => 'array',
-        'lastactive'      => 'datetime',
+        'shop_documents' => 'array',
+        'lastactive' => 'datetime',
     ];
 
     protected $hidden = [
@@ -56,14 +56,45 @@ class User extends Model implements Authenticatable
     }
 
     // Relationships
-    public function posts()          { return $this->hasMany(Post::class, 'user_id'); }
-    public function favourites()     { return $this->hasMany(Favourite::class, 'user_id'); }
-    public function transactions()   { return $this->hasMany(Transaction::class, 'seller_id'); }
-    public function messagesSent()   { return $this->hasMany(Message::class, 'from_id'); }
-    public function messagesRecv()   { return $this->hasMany(Message::class, 'to_id'); }
-    public function upgrades()       { return $this->hasMany(Upgrade::class, 'user_id'); }
-    public function mobileNumber()   { return $this->hasOne(MobileNumber::class, 'user_id'); }
-    public function options()        { return $this->hasMany(UserOption::class, 'user_id'); }
+    public function posts()
+    {
+        return $this->hasMany(Post::class, 'user_id');
+    }
+
+    public function favourites()
+    {
+        return $this->hasMany(Favourite::class, 'user_id');
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class, 'seller_id');
+    }
+
+    public function messagesSent()
+    {
+        return $this->hasMany(Message::class, 'from_id');
+    }
+
+    public function messagesRecv()
+    {
+        return $this->hasMany(Message::class, 'to_id');
+    }
+
+    public function upgrades()
+    {
+        return $this->hasMany(Upgrade::class, 'user_id');
+    }
+
+    public function mobileNumber()
+    {
+        return $this->hasOne(MobileNumber::class, 'user_id');
+    }
+
+    public function options()
+    {
+        return $this->hasMany(UserOption::class, 'user_id');
+    }
 
     /**
      * Admin check. In the legacy Bylancer schema, admins live in a separate
@@ -72,11 +103,14 @@ class User extends Model implements Authenticatable
      */
     public function isAdmin(): bool
     {
-        if ((string) ($this->user_type ?? '') === 'admin') return true;
+        if ((string) ($this->user_type ?? '') === 'admin') {
+            return true;
+        }
+
         return Admin::query()
             ->where(function ($q) {
-                $q->where('email',    $this->email)
-                  ->orWhere('username', $this->username);
+                $q->where('email', $this->email)
+                    ->orWhere('username', $this->username);
             })
             ->exists();
     }

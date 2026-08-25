@@ -11,13 +11,15 @@ use Illuminate\Console\Command;
  */
 class ExpireAds extends Command
 {
-    protected $signature   = 'ads:expire';
+    protected $signature = 'ads:expire';
+
     protected $description = 'Automatically expire classified ads past their expire_date';
 
     public function handle(AdService $ads): int
     {
         $count = $ads->expireDueAds();
         $this->info("Expired {$count} ad(s).");
+
         return self::SUCCESS;
     }
 }

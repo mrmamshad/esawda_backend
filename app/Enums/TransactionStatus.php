@@ -10,9 +10,9 @@ namespace App\Enums;
  */
 enum TransactionStatus: string
 {
-    case Pending  = 'pending';
-    case Success  = 'success';
-    case Failed   = 'failed';
-    case Cancel   = 'cancel';
+    case Pending = 'pending';
+    case Success = 'success';
+    case Failed = 'failed';
+    case Cancel = 'cancel';
     case Refunded = 'refunded';
 }

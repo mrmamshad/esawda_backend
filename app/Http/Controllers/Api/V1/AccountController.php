@@ -26,6 +26,7 @@ class AccountController extends Controller
     {
         $user = $request->user();
         $user->forceFill($request->validated() + ['updated_at' => now()])->save();
+
         return $this->ok(['user' => (new UserResource($user))->resolve()]);
     }
 
@@ -33,14 +34,14 @@ class AccountController extends Controller
     {
         $user = $request->user();
 
-        if (! Hash::check($request->string('current_password'), (string) $user->password_hash)) {
+        if (!Hash::check($request->string('current_password'), (string) $user->password_hash)) {
             return $this->error('INVALID_PASSWORD', 'Current password is incorrect.', 422,
                 ['current_password' => ['Current password is incorrect.']]);
         }
 
         $user->forceFill([
             'password_hash' => Hash::make($request->string('password')),
-            'updated_at'    => now(),
+            'updated_at' => now(),
         ])->save();
 
         // Revoke all *other* tokens; keep the caller's active session alive.
@@ -52,14 +53,16 @@ class AccountController extends Controller
 
     public function transactions(Request $request)
     {
-        $userId  = $request->user()->id;
+        $userId = $request->user()->id;
         $perPage = max(1, min(50, (int) $request->query('per_page', 20)));
 
         $q = Transaction::query()
             ->where('seller_id', $userId)
             ->orderByDesc('id');
 
-        if ($status = $request->query('status')) $q->where('status', $status);
+        if ($status = $request->query('status')) {
+            $q->where('status', $status);
+        }
 
         return $this->ok(TransactionResource::collection($q->paginate($perPage)));
     }
@@ -70,7 +73,7 @@ class AccountController extends Controller
      */
     public function purchases(Request $request)
     {
-        $userId  = $request->user()->id;
+        $userId = $request->user()->id;
         $perPage = max(1, min(50, (int) $request->query('per_page', 20)));
 
         $q = Order::query()
@@ -78,22 +81,24 @@ class AccountController extends Controller
             ->where('buyer_id', $userId)
             ->orderByDesc('id');
 
-        if ($status = $request->query('status')) $q->where('shipping_status', $status);
+        if ($status = $request->query('status')) {
+            $q->where('shipping_status', $status);
+        }
 
         $orders = $q->paginate($perPage);
 
         // Legacy `product.screen_shot` is a JSON array / comma list of
         // filenames. Flatten to a single absolute image URL the dashboard
         // can put straight in <img src>.
-        $base = rtrim(config('app.url'), '/') . '/storage/products/';
+        $base = rtrim(config('app.url'), '/').'/storage/products/';
         $orders->getCollection()->transform(function (Order $order) use ($base) {
-            $raw   = $order->product?->screen_shot ?? null;
+            $raw = $order->product?->screen_shot ?? null;
             $names = is_array($raw) ? $raw : (json_decode((string) $raw, true) ?: preg_split('/[,;\s]+/', (string) $raw, -1, PREG_SPLIT_NO_EMPTY));
             $first = collect($names)->map(fn ($n) => trim((string) $n))
                 ->filter(fn ($n) => $n !== '' && $n !== '[]' && $n !== '{}')
                 ->first();
             $order->setAttribute('product_image',
-                $first ? (preg_match('~^https?://~i', $first) ? $first : $base . ltrim($first, '/')) : null);
+                $first ? (preg_match('~^https?://~i', $first) ? $first : $base.ltrim($first, '/')) : null);
 
             return $order;
         });
@@ -108,7 +113,7 @@ class AccountController extends Controller
      */
     public function orders(Request $request)
     {
-        $userId  = $request->user()->id;
+        $userId = $request->user()->id;
         $perPage = max(1, min(50, (int) $request->query('per_page', 20)));
 
         $q = Order::query()
@@ -116,19 +121,21 @@ class AccountController extends Controller
             ->where('seller_id', $userId)
             ->orderByDesc('id');
 
-        if ($status = $request->query('status')) $q->where('shipping_status', $status);
+        if ($status = $request->query('status')) {
+            $q->where('shipping_status', $status);
+        }
 
         $orders = $q->paginate($perPage);
 
-        $base = rtrim(config('app.url'), '/') . '/storage/products/';
+        $base = rtrim(config('app.url'), '/').'/storage/products/';
         $orders->getCollection()->transform(function (Order $order) use ($base) {
-            $raw   = $order->product?->screen_shot ?? null;
+            $raw = $order->product?->screen_shot ?? null;
             $names = is_array($raw) ? $raw : (json_decode((string) $raw, true) ?: preg_split('/[,;\s]+/', (string) $raw, -1, PREG_SPLIT_NO_EMPTY));
             $first = collect($names)->map(fn ($n) => trim((string) $n))
                 ->filter(fn ($n) => $n !== '' && $n !== '[]' && $n !== '{}')
                 ->first();
             $order->setAttribute('product_image',
-                $first ? (preg_match('~^https?://~i', $first) ? $first : $base . ltrim($first, '/')) : null);
+                $first ? (preg_match('~^https?://~i', $first) ? $first : $base.ltrim($first, '/')) : null);
 
             return $order;
         });
@@ -153,16 +160,16 @@ class AccountController extends Controller
         // Store inside profile/; keep the bare filename in DB — resources
         // already prepend /storage/profile/ (storing "profile/…" in DB
         // double-prefixed and 404'd; storing at disk root 404'd too).
-        $name = Str::random(32) . '.' . $data['avatar']->getClientOriginalExtension();
+        $name = Str::random(32).'.'.$data['avatar']->getClientOriginalExtension();
         $data['avatar']->storeAs('profile', $name, 'public');
 
         // Best-effort cleanup of the previous file (skip default seeds).
-        if ($user->image && ! str_starts_with($user->image, 'default_')) {
-            Storage::disk('public')->delete('profile/' . $user->image);
+        if ($user->image && !str_starts_with($user->image, 'default_')) {
+            Storage::disk('public')->delete('profile/'.$user->image);
         }
 
         $user->forceFill([
-            'image'      => $name,
+            'image' => $name,
             'updated_at' => now(),
         ])->save();
 
@@ -185,17 +192,17 @@ class AccountController extends Controller
         ]);
 
         $user = $request->user();
-        $name = Str::random(32) . '.' . $data['cover']->getClientOriginalExtension();
+        $name = Str::random(32).'.'.$data['cover']->getClientOriginalExtension();
         // Store inside the profile/ folder; keep only the bare filename in DB
         // — resources already prepend /storage/profile/.
         $data['cover']->storeAs('profile', $name, 'public');
 
-        if ($user->cover && ! str_starts_with($user->cover, 'default_')) {
-            Storage::disk('public')->delete('profile/' . $user->cover);
+        if ($user->cover && !str_starts_with($user->cover, 'default_')) {
+            Storage::disk('public')->delete('profile/'.$user->cover);
         }
 
         $user->forceFill([
-            'cover'      => $name,
+            'cover' => $name,
             'updated_at' => now(),
         ])->save();
 

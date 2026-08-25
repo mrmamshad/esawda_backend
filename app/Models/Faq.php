@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 class Faq extends Model
 {
     protected $table = 'faq_entries';
+
     protected $primaryKey = 'faq_id';
+
     public $timestamps = false;
+
     protected $guarded = [];
 }

@@ -15,7 +15,9 @@ class FavouriteController extends Controller
 
     public function index(Request $request)
     {
-        if (! $this->auth->check($request)) return redirect()->route('auth.login');
+        if (!$this->auth->check($request)) {
+            return redirect()->route('auth.login');
+        }
 
         $userId = (int) session('user.id');
 
@@ -31,6 +33,7 @@ class FavouriteController extends Controller
                 Favourite::where('id', $fid)->where('user_id', $userId)->delete();
                 session()->flash('flash_success', 'Removed from favourites.');
             }
+
             return back();
         }
 

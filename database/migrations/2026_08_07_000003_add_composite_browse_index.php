@@ -12,10 +12,13 @@ use Illuminate\Support\Facades\Schema;
  * over this ascending index — replacing a filesort. Include `category` so
  * per-category browse (filter[category]=X) also skips the filesort.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
-        if (! Schema::hasTable('product')) return;
+        if (!Schema::hasTable('product')) {
+            return;
+        }
         Schema::table('product', function (Blueprint $t) {
             $t->index(
                 ['status', 'hide', 'category', 'featured', 'urgent', 'id'],
@@ -26,9 +29,14 @@ return new class extends Migration {
 
     public function down(): void
     {
-        if (! Schema::hasTable('product')) return;
+        if (!Schema::hasTable('product')) {
+            return;
+        }
         Schema::table('product', function (Blueprint $t) {
-            try { $t->dropIndex('idx_product_browse_sort'); } catch (\Throwable $e) { /* ignore */ }
+            try {
+                $t->dropIndex('idx_product_browse_sort');
+            } catch (Throwable $e) { /* ignore */
+            }
         });
     }
 };

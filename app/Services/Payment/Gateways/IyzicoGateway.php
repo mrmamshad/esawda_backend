@@ -8,9 +8,13 @@ namespace App\Services\Payment\Gateways;
  */
 class IyzicoGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'iyzico'; }
-    public function label(): string { return 'iyzico'; }
+    public function slug(): string
+    {
+        return 'iyzico';
+    }
 
-    // TODO(migration): implement gateway-specific SDK flow from
-    // includes/payments/iyzico/*.php
+    public function label(): string
+    {
+        return 'iyzico';
+    }
 }

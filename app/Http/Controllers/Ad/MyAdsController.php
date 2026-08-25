@@ -14,7 +14,9 @@ class MyAdsController extends Controller
 
     public function index(Request $request)
     {
-        if (! $this->auth->check($request)) return redirect()->route('auth.login');
+        if (!$this->auth->check($request)) {
+            return redirect()->route('auth.login');
+        }
 
         $userId = (int) session('user.id');
 
@@ -23,14 +25,15 @@ class MyAdsController extends Controller
             $id = (int) $request->input('post_id');
             $deleted = Post::where('id', $id)->where('user_id', $userId)->delete();
             session()->flash('flash_success', $deleted ? 'Ad deleted.' : 'Ad not found or not yours.');
+
             return back();
         }
 
         // Show all statuses (not just active) so users see their pending ads
         $posts = Post::where('user_id', $userId)
-                     ->orderByDesc('id')
-                     ->paginate(20);
+            ->orderByDesc('id')
+            ->paginate(20);
 
-        return app(\App\Services\ThemeRenderer::class)->render('ad-my', ['posts' => $posts]);
+        return app(ThemeRenderer::class)->render('ad-my', ['posts' => $posts]);
     }
 }

@@ -19,10 +19,15 @@ class UserAdminController extends Controller
                     ->orWhere('name', 'like', "%{$s}%");
             });
         }
-        if ($type = $request->query('user_type')) $q->where('user_type', $type);
-        if ($status = $request->query('status'))  $q->where('status', $status);
+        if ($type = $request->query('user_type')) {
+            $q->where('user_type', $type);
+        }
+        if ($status = $request->query('status')) {
+            $q->where('status', $status);
+        }
 
         $q->orderByDesc('id');
+
         return $this->ok($q->paginate((int) min(100, max(1, (int) $request->query('per_page', 20)))));
     }
 
@@ -34,12 +39,12 @@ class UserAdminController extends Controller
     public function update(int $id, Request $request)
     {
         $data = $request->validate([
-            'name'      => ['sometimes', 'string', 'max:150'],
-            'email'     => ['sometimes', 'email', 'max:150'],
-            'phone'     => ['sometimes', 'nullable', 'string', 'max:30'],
+            'name' => ['sometimes', 'string', 'max:150'],
+            'email' => ['sometimes', 'email', 'max:150'],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
             'user_type' => ['sometimes', 'in:user,admin'],
-            'group_id'  => ['sometimes', 'string', 'max:60'],
-            'status'    => ['sometimes', 'in:0,1'],
+            'group_id' => ['sometimes', 'string', 'max:60'],
+            'status' => ['sometimes', 'in:0,1'],
         ]);
         $user = User::findOrFail($id);
 
@@ -48,6 +53,7 @@ class UserAdminController extends Controller
         // are pinned to the small validated set — never a raw passthrough.
         $safe = array_intersect_key($data, array_flip(['name', 'email', 'phone', 'user_type', 'group_id', 'status']));
         $user->fill($safe)->save();
+
         return $this->ok($user->fresh());
     }
 
@@ -55,6 +61,7 @@ class UserAdminController extends Controller
     {
         $user = User::findOrFail($id);
         $user->forceFill(['status' => '0', 'updated_at' => now()])->save();
+
         return $this->ok(['message' => 'User banned.', 'user' => $user]);
     }
 
@@ -62,12 +69,14 @@ class UserAdminController extends Controller
     {
         $user = User::findOrFail($id);
         $user->forceFill(['status' => '1', 'updated_at' => now()])->save();
+
         return $this->ok(['message' => 'User un-banned.', 'user' => $user]);
     }
 
     public function destroy(int $id)
     {
         User::findOrFail($id)->delete();
+
         return $this->ok(['message' => 'User deleted.']);
     }
 }

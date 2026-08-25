@@ -8,9 +8,13 @@ namespace App\Services\Payment\Gateways;
  */
 class PaystackGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'paystack'; }
-    public function label(): string { return 'Paystack'; }
+    public function slug(): string
+    {
+        return 'paystack';
+    }
 
-    // TODO(migration): implement gateway-specific SDK flow from
-    // includes/payments/paystack/*.php
+    public function label(): string
+    {
+        return 'Paystack';
+    }
 }

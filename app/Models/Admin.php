@@ -2,17 +2,22 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\Authenticatable;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Auth\Authenticatable as AuthTrait;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 
-class Admin extends Model implements Authenticatable, \Filament\Models\Contracts\FilamentUser
+class Admin extends Model implements Authenticatable, FilamentUser
 {
     use AuthTrait;
 
     protected $table = 'admins';
+
     public $timestamps = false;
+
     protected $guarded = [];
+
     protected $hidden = ['password_hash'];
 
     public function getAuthPassword(): string
@@ -21,7 +26,7 @@ class Admin extends Model implements Authenticatable, \Filament\Models\Contracts
     }
 
     /** Filament allows every admin row into the panel. */
-    public function canAccessPanel(\Filament\Panel $panel): bool
+    public function canAccessPanel(Panel $panel): bool
     {
         return true;
     }

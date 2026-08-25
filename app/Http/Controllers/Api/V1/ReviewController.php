@@ -27,9 +27,9 @@ class ReviewController extends Controller
         Post::findOrFail($adId);
 
         $q = Review::where('productID', $adId)
-                   ->where('publish', 1)
-                   ->with('user')
-                   ->orderByDesc('date');
+            ->where('publish', 1)
+            ->with('user')
+            ->orderByDesc('date');
 
         return $this->ok(ReviewResource::collection($q->paginate((int) min(50, max(1, $request->query('per_page', 12))))));
     }
@@ -45,7 +45,7 @@ class ReviewController extends Controller
 
         $image = null;
         if ($request->hasFile('image')) {
-            $name = Str::random(32) . '.' . $request->file('image')->extension();
+            $name = Str::random(32).'.'.$request->file('image')->extension();
             $request->file('image')->storeAs('reviews', $name, 'public');
             $image = "reviews/{$name}";
         }
@@ -53,11 +53,11 @@ class ReviewController extends Controller
         $review = Review::updateOrCreate(
             ['productID' => $adId, 'user_id' => $userId],
             [
-                'rating'   => (float) $request->validated('rating'),
+                'rating' => (float) $request->validated('rating'),
                 'comments' => $request->validated('comment'),
-                'image'    => $image,
-                'date'     => now()->toDateString(),
-                'publish'  => 1,
+                'image' => $image,
+                'date' => now()->toDateString(),
+                'publish' => 1,
             ]
         );
 
@@ -68,10 +68,11 @@ class ReviewController extends Controller
     {
         $review = Review::findOrFail($reviewId);
         if ((int) $review->user_id !== (int) $request->user()->id
-            && ! in_array($request->user()->user_type, ['admin', 'superadmin'], true)) {
+            && !in_array($request->user()->user_type, ['admin', 'superadmin'], true)) {
             return $this->error('FORBIDDEN', 'You can only delete your own reviews.', 403);
         }
         $review->delete();
+
         return $this->noContent();
     }
 }

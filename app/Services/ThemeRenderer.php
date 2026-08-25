@@ -23,9 +23,10 @@ class ThemeRenderer
         // view under `themes.default.{name}` (which is a hand-written safe
         // stub written for controllers whose theme .tpl throws).
         $viewName = "themes.$theme.$name";
-        if (! view()->exists($viewName)) {
+        if (!view()->exists($viewName)) {
             $viewName = "themes.default.$name";
         }
+
         return view($viewName, $data);
     }
 
@@ -40,6 +41,7 @@ class ThemeRenderer
                 $map[$legacy] = '#';
             }
         }
+
         return $map;
     }
 }

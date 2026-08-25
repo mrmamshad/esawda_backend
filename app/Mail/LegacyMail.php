@@ -15,12 +15,13 @@ class LegacyMail extends Mailable
     use Queueable, SerializesModels;
 
     public string $emailBody;
+
     public string $emailSubject;
 
     public function __construct(public string $recipient, public string $recipientName, string $subject, string $body)
     {
         $this->emailSubject = $subject;
-        $this->emailBody    = $body;
+        $this->emailBody = $body;
     }
 
     public function build(): self

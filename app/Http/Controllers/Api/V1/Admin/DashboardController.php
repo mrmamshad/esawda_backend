@@ -34,70 +34,67 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $range = (string) ($request->query('range') ?? 'today');
-        $from  = $request->query('from');
-        $to    = $request->query('to');
+        $from = $request->query('from');
+        $to = $request->query('to');
 
         [$fromDate, $toDate] = $this->resolveWindow($range, $from, $to);
 
         // Bucket the cache key to the hour so "today"/"week"/"month" stay
         // stable for a short time and don't recompute on every poll.
-        $cacheKey = 'admin.dashboard:' . $range . ':' . $fromDate->format('YmdH') . ':' . $toDate->format('YmdH');
+        $cacheKey = 'admin.dashboard:'.$range.':'.$fromDate->format('YmdH').':'.$toDate->format('YmdH');
 
         return $this->ok(Cache::remember($cacheKey, 300, function () use ($range, $fromDate, $toDate) {
             $currStart = $fromDate;
-            $currEnd   = $toDate;
+            $currEnd = $toDate;
 
             // Previous window: equal length immediately before the current one.
-            $lenSecs   = max(1, $currStart->diffInSeconds($currEnd));
-            $prevEnd   = $currStart->copy()->subSecond();
+            $lenSecs = max(1, $currStart->diffInSeconds($currEnd));
+            $prevEnd = $currStart->copy()->subSecond();
             $prevStart = $prevEnd->copy()->subSeconds($lenSecs);
 
             $delta = fn ($curr, $prev) => $prev > 0 ? (($curr - $prev) / $prev) * 100 : ($curr > 0 ? 100 : 0);
 
             $counts = [
-                'users'          => User::whereBetween('created_at', [$currStart, $currEnd])->count(),
-                'ads_total'      => Post::whereBetween('created_at', [$currStart, $currEnd])->count(),
-                'ads_active'     => Post::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'active')->where('hide', '0')->count(),
-                'ads_pending'    => Post::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'pending')->count(),
-                'ads_expired'    => Post::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'expire')->count(),
-                'tx_total'       => Transaction::whereBetween('created_at', [$currStart, $currEnd])->count(),
-                'tx_success'     => Transaction::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'success')->count(),
-                'revenue_total'  => (float) Transaction::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'success')->sum('amount'),
+                'users' => User::whereBetween('created_at', [$currStart, $currEnd])->count(),
+                'ads_total' => Post::whereBetween('created_at', [$currStart, $currEnd])->count(),
+                'ads_active' => Post::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'active')->where('hide', '0')->count(),
+                'ads_pending' => Post::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'pending')->count(),
+                'ads_expired' => Post::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'expire')->count(),
+                'tx_total' => Transaction::whereBetween('created_at', [$currStart, $currEnd])->count(),
+                'tx_success' => Transaction::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'success')->count(),
+                'revenue_total' => (float) Transaction::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'success')->sum('amount'),
             ];
 
             $trend = [
-                'users_delta'    => round($delta($counts['users'], User::whereBetween('created_at', [$prevStart, $prevEnd])->count()), 1),
-                'ads_delta'      => round($delta($counts['ads_total'], Post::whereBetween('created_at', [$prevStart, $prevEnd])->count()), 1),
-                'revenue_delta'  => round($delta($counts['revenue_total'], (float) Transaction::whereBetween('created_at', [$prevStart, $prevEnd])->where('status', 'success')->sum('amount')), 1),
-                'tx_delta'       => round($delta($counts['tx_total'], Transaction::whereBetween('created_at', [$prevStart, $prevEnd])->count()), 1),
+                'users_delta' => round($delta($counts['users'], User::whereBetween('created_at', [$prevStart, $prevEnd])->count()), 1),
+                'ads_delta' => round($delta($counts['ads_total'], Post::whereBetween('created_at', [$prevStart, $prevEnd])->count()), 1),
+                'revenue_delta' => round($delta($counts['revenue_total'], (float) Transaction::whereBetween('created_at', [$prevStart, $prevEnd])->where('status', 'success')->sum('amount')), 1),
+                'tx_delta' => round($delta($counts['tx_total'], Transaction::whereBetween('created_at', [$prevStart, $prevEnd])->count()), 1),
             ];
 
             return [
                 'counts' => $counts,
-                'trend'  => $trend,
+                'trend' => $trend,
                 'recent' => [
-                    'ads'          => Post::whereBetween('created_at', [$currStart, $currEnd])->orderByDesc('id')->limit(6)->get(['id', 'product_name', 'price', 'status', 'created_at']),
-                    'users'        => User::whereBetween('created_at', [$currStart, $currEnd])->orderByDesc('id')->limit(6)->get(['id', 'username', 'email', 'created_at']),
-                    'transactions' => Transaction::whereBetween('created_at', [$currStart, $currEnd])
-                        ->with('buyer:id,username,email', 'sellerInfo:id,username,email')
-                        ->orderByDesc('id')->limit(6)
-                        ->get(['id', 'seller_id', 'amount', 'status', 'transaction_gatway', 'product_name', 'purpose', 'meta', 'created_at']),
+                    'ads' => Post::whereBetween('created_at', [$currStart, $currEnd])->orderByDesc('id')->limit(6)->get(['id', 'product_name', 'price', 'status', 'created_at']),
+                    'users' => User::whereBetween('created_at', [$currStart, $currEnd])->orderByDesc('id')->limit(6)->get(['id', 'username', 'email', 'created_at']),
+                    'transactions' => Transaction::whereBetween('created_at', [$currStart, $currEnd])->orderByDesc('id')->limit(6)->get(['id', 'seller_id', 'amount', 'status', 'transaction_gatway', 'product_name', 'created_at']),
                 ],
                 'revenue_series' => [
-                    '7D'  => $this->salesSeries(7),
+                    '7D' => $this->salesSeries(7),
                     '30D' => $this->salesSeries(30),
                     '90D' => $this->salesSeries(90),
-                    '1Y'  => $this->salesSeriesMonthly(12),
+                    '1Y' => $this->salesSeriesMonthly(12),
                 ],
                 'category_breakdown' => $this->categoryBreakdown($currStart, $currEnd),
-                'top_categories'     => $this->topCategories($currStart, $currEnd),
-                'user_growth'        => $this->userGrowthSeries(30),
+                'top_categories' => $this->topCategories($currStart, $currEnd),
+                'user_growth' => $this->userGrowthSeries(30),
                 'window' => [
-                    'range'        => $range,
-                    'from'         => $currStart->toDateTimeString(),
-                    'to'           => $currEnd->toDateTimeString(),
-                    'revenue'      => $this->bucketed('revenue', $currStart, $currEnd),
-                    'users'        => $this->bucketed('users', $currStart, $currEnd),
+                    'range' => $range,
+                    'from' => $currStart->toDateTimeString(),
+                    'to' => $currEnd->toDateTimeString(),
+                    'revenue' => $this->bucketed('revenue', $currStart, $currEnd),
+                    'users' => $this->bucketed('users', $currStart, $currEnd),
                     'transactions' => $this->bucketed('transactions', $currStart, $currEnd),
                 ],
             ];
@@ -109,7 +106,7 @@ class DashboardController extends Controller
     {
         $now = now();
         $f = $from ? Carbon::parse($from) : null;
-        $t = $to   ? Carbon::parse($to)   : null;
+        $t = $to ? Carbon::parse($to) : null;
 
         switch ($range) {
             case 'week':
@@ -120,6 +117,7 @@ class DashboardController extends Controller
                 if ($f && $t) {
                     return [$f->copy()->startOfDay(), $t->copy()->endOfDay()];
                 }
+
                 return [$now->copy()->startOfDay(), $now->copy()];
             case 'today':
             default:
@@ -163,27 +161,27 @@ class DashboardController extends Controller
             ->get()->keyBy(fn ($r) => (string) $r->d);
 
         $cursor = match ($step) {
-            'hour'  => $from->copy()->startOfHour(),
-            'day'   => $from->copy()->startOfDay(),
+            'hour' => $from->copy()->startOfHour(),
+            'day' => $from->copy()->startOfDay(),
             'month' => $from->copy()->startOfMonth(),
         };
 
         $out = [];
         while ($cursor->lte($to)) {
             $key = match ($step) {
-                'hour'  => $cursor->format('Y-m-d H:00'),
-                'day'   => $cursor->format('Y-m-d'),
+                'hour' => $cursor->format('Y-m-d H:00'),
+                'day' => $cursor->format('Y-m-d'),
                 'month' => $cursor->format('Y-m-01'),
             };
             $label = match ($step) {
-                'hour'  => $cursor->format('Y-m-d H:00'),
-                'day'   => $cursor->format('Y-m-d'),
+                'hour' => $cursor->format('Y-m-d H:00'),
+                'day' => $cursor->format('Y-m-d'),
                 'month' => $cursor->format('Y-m-d'),
             };
             $out[] = ['date' => $label, 'total' => (float) ($rows[$key]->total ?? 0)];
             $cursor = match ($step) {
-                'hour'  => $cursor->copy()->addHour(),
-                'day'   => $cursor->copy()->addDay(),
+                'hour' => $cursor->copy()->addHour(),
+                'day' => $cursor->copy()->addDay(),
                 'month' => $cursor->copy()->addMonth(),
             };
         }
@@ -213,6 +211,7 @@ class DashboardController extends Controller
             $day = now()->subDays($i)->toDateString();
             $out[] = ['date' => $day, 'total' => (float) ($rows[$day]->total ?? 0)];
         }
+
         return $out;
     }
 
@@ -230,6 +229,7 @@ class DashboardController extends Controller
             $day = now()->subMonths($i)->startOfMonth()->toDateString();
             $out[] = ['date' => $day, 'total' => (float) ($rows[$day]->total ?? 0)];
         }
+
         return $out;
     }
 
@@ -242,6 +242,7 @@ class DashboardController extends Controller
             if ($from && $to) {
                 $q->whereBetween('product.created_at', [$from, $to]);
             }
+
             return $q->selectRaw('COALESCE(cat_name, "Uncategorised") as name, COUNT(*) as value')
                 ->groupBy('cat_name')
                 ->orderByDesc('value')
@@ -249,7 +250,9 @@ class DashboardController extends Controller
                 ->get()
                 ->map(fn ($r) => ['name' => (string) $r->name, 'value' => (int) $r->value])
                 ->toArray();
-        } catch (\Throwable $e) { return []; }
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     private function topCategories(?Carbon $from = null, ?Carbon $to = null): array
@@ -260,6 +263,7 @@ class DashboardController extends Controller
             if ($from && $to) {
                 $q->whereBetween('product.created_at', [$from, $to]);
             }
+
             return $q->selectRaw('COALESCE(cat_name, "Uncategorised") as name, COUNT(*) as count')
                 ->groupBy('cat_name')
                 ->orderByDesc('count')
@@ -267,7 +271,9 @@ class DashboardController extends Controller
                 ->get()
                 ->map(fn ($r) => ['name' => (string) $r->name, 'count' => (int) $r->count])
                 ->toArray();
-        } catch (\Throwable $e) { return []; }
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     private function userGrowthSeries(int $days): array
@@ -284,6 +290,7 @@ class DashboardController extends Controller
             $cum += (int) ($rows[$day]->total ?? 0);
             $out[] = ['date' => $day, 'total' => $cum];
         }
+
         return $out;
     }
 }

@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Jobs\FulfilTransactionJob;
+use App\Mail\Transactional;
 use App\Models\Order;
+use App\Models\Plan;
 use App\Models\Post;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Mail\MailService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -46,29 +48,29 @@ class TransactionalEmailsTest extends TestCase
     private function activePost(int $sellerId, array $overrides = []): Post
     {
         return Post::create(array_merge([
-            'user_id'      => $sellerId,
+            'user_id' => $sellerId,
             'product_name' => 'Test Product',
-            'description'  => 'desc',
-            'price'        => 1500,
-            'category'     => 1,
-            'condition'    => 'new',
-            'status'       => 'active',
-            'hide'         => '0',
-            'created_at'   => now(),
-            'updated_at'   => now(),
+            'description' => 'desc',
+            'price' => 1500,
+            'category' => 1,
+            'condition' => 'new',
+            'status' => 'active',
+            'hide' => '0',
+            'created_at' => now(),
+            'updated_at' => now(),
         ], $overrides));
     }
 
     private function makeOrder(Post $post, User $buyer, User $seller): Order
     {
         return Order::create([
-            'product_id'     => $post->id,
-            'buyer_id'       => $buyer->id,
-            'seller_id'      => $seller->id,
+            'product_id' => $post->id,
+            'buyer_id' => $buyer->id,
+            'seller_id' => $seller->id,
             'transaction_id' => null,
-            'amount'         => $post->price,
-            'shipping_status'=> 'processing',
-            'seller_paid'    => false,
+            'amount' => $post->price,
+            'shipping_status' => 'processing',
+            'seller_paid' => false,
         ]);
     }
 
@@ -77,29 +79,27 @@ class TransactionalEmailsTest extends TestCase
         Mail::fake();
 
         $seller = $this->user(['email' => 'seller@example.com', 'name' => 'Seller One']);
-        $buyer  = $this->user(['email' => 'buyer@example.com', 'name' => 'Buyer One']);
-        $post   = $this->activePost($seller->id);
+        $buyer = $this->user(['email' => 'buyer@example.com', 'name' => 'Buyer One']);
+        $post = $this->activePost($seller->id);
 
         $tx = Transaction::create([
-            'seller_id'          => $buyer->id,
-            'product_id'         => $post->id,
-            'amount'             => $post->price,
-            'status'             => 'success',
-            'purpose'            => 'product_purchase',
+            'seller_id' => $buyer->id,
+            'product_id' => $post->id,
+            'amount' => $post->price,
+            'status' => 'success',
+            'purpose' => 'product_purchase',
             'transaction_gatway' => 'sslcommerz',
-            'meta'               => json_encode(['buyer_id' => $buyer->id, 'seller_id' => $seller->id]),
-            'created_at'         => now(),
-            'updated_at'         => now(),
+            'meta' => json_encode(['buyer_id' => $buyer->id, 'seller_id' => $seller->id]),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         FulfilTransactionJob::dispatchSync($tx->id);
 
-        Mail::assertQueued(\App\Mail\Transactional::class, fn (Mailable $mail) =>
-            $mail->hasTo('seller@example.com')
+        Mail::assertQueued(Transactional::class, fn (Mailable $mail) => $mail->hasTo('seller@example.com')
             && str_contains($mail->envelope()->subject, 'New order')
         );
-        Mail::assertQueued(\App\Mail\Transactional::class, fn (Mailable $mail) =>
-            $mail->hasTo('buyer@example.com')
+        Mail::assertQueued(Transactional::class, fn (Mailable $mail) => $mail->hasTo('buyer@example.com')
             && str_contains($mail->envelope()->subject, 'Payment received')
         );
     }
@@ -110,26 +110,25 @@ class TransactionalEmailsTest extends TestCase
         config(['quickad.admin_email' => 'admin@esawda.com']);
 
         $seller = $this->user(['email' => 'seller@example.com']);
-        $buyer  = $this->user(['email' => 'buyer@example.com']);
-        $post   = $this->activePost($seller->id);
+        $buyer = $this->user(['email' => 'buyer@example.com']);
+        $post = $this->activePost($seller->id);
 
         $tx = Transaction::create([
-            'seller_id'          => $buyer->id,
-            'product_id'         => $post->id,
-            'amount'             => $post->price,
-            'status'             => 'success',
-            'purpose'            => 'product_purchase',
+            'seller_id' => $buyer->id,
+            'product_id' => $post->id,
+            'amount' => $post->price,
+            'status' => 'success',
+            'purpose' => 'product_purchase',
             'transaction_gatway' => 'sslcommerz',
-            'meta'               => json_encode(['buyer_id' => $buyer->id, 'seller_id' => $seller->id]),
-            'created_at'         => now(),
-            'updated_at'         => now(),
+            'meta' => json_encode(['buyer_id' => $buyer->id, 'seller_id' => $seller->id]),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         FulfilTransactionJob::dispatchSync($tx->id);
 
-        Mail::assertQueued(\App\Mail\Transactional::class, fn (Mailable $mail) =>
-            $mail->hasTo('admin@esawda.com')
-            && str_contains($mail->envelope()->subject, 'Transaction #' . $tx->id)
+        Mail::assertQueued(Transactional::class, fn (Mailable $mail) => $mail->hasTo('admin@esawda.com')
+            && str_contains($mail->envelope()->subject, 'Transaction #'.$tx->id)
         );
     }
 
@@ -138,14 +137,13 @@ class TransactionalEmailsTest extends TestCase
         Mail::fake();
 
         $seller = $this->user(['email' => 'seller@example.com', 'name' => 'Seller']);
-        $post   = $this->activePost($seller->id, ['status' => 'pending']);
+        $post = $this->activePost($seller->id, ['status' => 'pending']);
 
         $this->actingAs($this->user(['user_type' => 'admin']))
-             ->postJson("/api/v1/admin/ads/{$post->id}/approve")
-             ->assertOk();
+            ->postJson("/api/v1/admin/ads/{$post->id}/approve")
+            ->assertOk();
 
-        Mail::assertQueued(\App\Mail\Transactional::class, fn (Mailable $mail) =>
-            $mail->hasTo('seller@example.com')
+        Mail::assertQueued(Transactional::class, fn (Mailable $mail) => $mail->hasTo('seller@example.com')
             && str_contains($mail->envelope()->subject, 'Your ad is now live')
         );
     }
@@ -155,14 +153,13 @@ class TransactionalEmailsTest extends TestCase
         Mail::fake();
 
         $seller = $this->user(['email' => 'seller@example.com']);
-        $post   = $this->activePost($seller->id, ['status' => 'pending']);
+        $post = $this->activePost($seller->id, ['status' => 'pending']);
 
         $this->actingAs($this->user(['user_type' => 'admin']))
-             ->postJson("/api/v1/admin/ads/{$post->id}/reject", ['reason' => 'Inappropriate content'])
-             ->assertOk();
+            ->postJson("/api/v1/admin/ads/{$post->id}/reject", ['reason' => 'Inappropriate content'])
+            ->assertOk();
 
-        Mail::assertQueued(\App\Mail\Transactional::class, fn (Mailable $mail) =>
-            $mail->hasTo('seller@example.com')
+        Mail::assertQueued(Transactional::class, fn (Mailable $mail) => $mail->hasTo('seller@example.com')
             && str_contains($mail->envelope()->subject, 'not approved')
         );
     }
@@ -173,20 +170,19 @@ class TransactionalEmailsTest extends TestCase
         config(['quickad.admin_email' => 'admin@esawda.com']);
 
         $seller = $this->user(['email' => 'seller@example.com', 'plan_expires_at' => now()->addMonth(), 'ads_remaining' => 5]);
-        $post   = $this->activePost($seller->id, ['status' => 'pending']);
+        $post = $this->activePost($seller->id, ['status' => 'pending']);
 
         $this->actingAs($seller)
-             ->postJson('/api/v1/ads', [
-                 'title'       => 'New Pending Ad',
-                 'description' => 'A brand new ad awaiting review',
-                 'price'       => 500,
-                 'category'    => 1,
-                 'condition'   => 'new',
-             ])
-             ->assertCreated();
+            ->postJson('/api/v1/ads', [
+                'title' => 'New Pending Ad',
+                'description' => 'A brand new ad awaiting review',
+                'price' => 500,
+                'category' => 1,
+                'condition' => 'new',
+            ])
+            ->assertCreated();
 
-        Mail::assertQueued(\App\Mail\Transactional::class, fn (Mailable $mail) =>
-            $mail->hasTo('admin@esawda.com')
+        Mail::assertQueued(Transactional::class, fn (Mailable $mail) => $mail->hasTo('admin@esawda.com')
             && str_contains($mail->envelope()->subject, 'New ad pending review')
         );
     }
@@ -199,23 +195,21 @@ class TransactionalEmailsTest extends TestCase
         $seller = $this->user(['email' => 'seller@example.com', 'name' => 'New Seller']);
 
         $this->actingAs($seller)
-             ->post('/api/v1/me/shop/apply', [
-                 'owner_name' => 'New Seller',
-                 'owner_phone' => '01700000000',
-                 'shop_name'  => 'My Shop',
-                 'shop_address' => 'Dhaka',
-                 'documents'  => [
-                     \Illuminate\Http\UploadedFile::fake()->create('doc.pdf', 10),
-                 ],
-             ])
-             ->assertOk();
+            ->post('/api/v1/me/shop/apply', [
+                'owner_name' => 'New Seller',
+                'owner_phone' => '01700000000',
+                'shop_name' => 'My Shop',
+                'shop_address' => 'Dhaka',
+                'documents' => [
+                    UploadedFile::fake()->create('doc.pdf', 10),
+                ],
+            ])
+            ->assertOk();
 
-        Mail::assertQueued(\App\Mail\Transactional::class, fn (Mailable $mail) =>
-            $mail->hasTo('seller@example.com')
+        Mail::assertQueued(Transactional::class, fn (Mailable $mail) => $mail->hasTo('seller@example.com')
             && str_contains($mail->envelope()->subject, 'Welcome to the eSawda shop')
         );
-        Mail::assertQueued(\App\Mail\Transactional::class, fn (Mailable $mail) =>
-            $mail->hasTo('admin@esawda.com')
+        Mail::assertQueued(Transactional::class, fn (Mailable $mail) => $mail->hasTo('admin@esawda.com')
             && str_contains($mail->envelope()->subject, 'New shop opened')
         );
     }
@@ -225,20 +219,19 @@ class TransactionalEmailsTest extends TestCase
         Mail::fake();
 
         $seller = $this->user(['email' => 'seller@example.com']);
-        $buyer  = $this->user(['email' => 'buyer@example.com']);
-        $post   = $this->activePost($seller->id);
-        $order  = $this->makeOrder($post, $buyer, $seller);
+        $buyer = $this->user(['email' => 'buyer@example.com']);
+        $post = $this->activePost($seller->id);
+        $order = $this->makeOrder($post, $buyer, $seller);
 
         $this->actingAs($this->user(['user_type' => 'admin']))
-             ->patchJson("/api/v1/admin/orders/{$order->id}", [
-                 'shipping_status' => 'shipped',
-                 'courier_name'    => 'Steadfast',
-                 'tracking_no'     => 'ST123',
-             ])
-             ->assertOk();
+            ->patchJson("/api/v1/admin/orders/{$order->id}", [
+                'shipping_status' => 'shipped',
+                'courier_name' => 'Steadfast',
+                'tracking_no' => 'ST123',
+            ])
+            ->assertOk();
 
-        Mail::assertQueued(\App\Mail\Transactional::class, fn (Mailable $mail) =>
-            $mail->hasTo('buyer@example.com')
+        Mail::assertQueued(Transactional::class, fn (Mailable $mail) => $mail->hasTo('buyer@example.com')
             && str_contains($mail->envelope()->subject, 'SHIPPED')
         );
     }
@@ -248,16 +241,15 @@ class TransactionalEmailsTest extends TestCase
         Mail::fake();
 
         $seller = $this->user(['email' => 'seller@example.com']);
-        $buyer  = $this->user(['email' => 'buyer@example.com']);
-        $post   = $this->activePost($seller->id);
-        $order  = $this->makeOrder($post, $buyer, $seller);
+        $buyer = $this->user(['email' => 'buyer@example.com']);
+        $post = $this->activePost($seller->id);
+        $order = $this->makeOrder($post, $buyer, $seller);
 
         $this->actingAs($this->user(['user_type' => 'admin']))
-             ->patchJson("/api/v1/admin/orders/{$order->id}", ['seller_paid' => true])
-             ->assertOk();
+            ->patchJson("/api/v1/admin/orders/{$order->id}", ['seller_paid' => true])
+            ->assertOk();
 
-        Mail::assertQueued(\App\Mail\Transactional::class, fn (Mailable $mail) =>
-            $mail->hasTo('seller@example.com')
+        Mail::assertQueued(Transactional::class, fn (Mailable $mail) => $mail->hasTo('seller@example.com')
             && str_contains($mail->envelope()->subject, 'Payment released')
         );
     }
@@ -267,29 +259,28 @@ class TransactionalEmailsTest extends TestCase
         Mail::fake();
 
         $seller = $this->user(['email' => 'seller@example.com']);
-        $buyer  = $this->user(['email' => 'buyer@example.com']);
-        $post   = $this->activePost($seller->id);
+        $buyer = $this->user(['email' => 'buyer@example.com']);
+        $post = $this->activePost($seller->id);
 
         $tx = Transaction::create([
-            'seller_id'          => $buyer->id,
-            'product_id'         => $post->id,
-            'amount'             => $post->price,
-            'status'             => 'success',
-            'purpose'            => 'product_purchase',
+            'seller_id' => $buyer->id,
+            'product_id' => $post->id,
+            'amount' => $post->price,
+            'status' => 'success',
+            'purpose' => 'product_purchase',
             'transaction_gatway' => 'sslcommerz',
-            'meta'               => json_encode(['buyer_id' => $buyer->id, 'seller_id' => $seller->id]),
-            'created_at'         => now(),
-            'updated_at'         => now(),
+            'meta' => json_encode(['buyer_id' => $buyer->id, 'seller_id' => $seller->id]),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
         $order = $this->makeOrder($post, $buyer, $seller);
         $order->forceFill(['transaction_id' => $tx->id])->save();
 
         $this->actingAs($this->user(['user_type' => 'admin']))
-             ->postJson("/api/v1/admin/transactions/{$tx->id}/refund")
-             ->assertOk();
+            ->postJson("/api/v1/admin/transactions/{$tx->id}/refund")
+            ->assertOk();
 
-        Mail::assertQueued(\App\Mail\Transactional::class, fn (Mailable $mail) =>
-            $mail->hasTo('buyer@example.com')
+        Mail::assertQueued(Transactional::class, fn (Mailable $mail) => $mail->hasTo('buyer@example.com')
             && str_contains($mail->envelope()->subject, 'Refund issued')
         );
     }
@@ -301,13 +292,14 @@ class TransactionalEmailsTest extends TestCase
         $user = $this->user(['email' => 'user@example.com', 'name' => 'Test User']);
 
         $this->postJson('/api/v1/auth/forgot', ['email' => $user->email])
-             ->assertOk();
+            ->assertOk();
 
-        Mail::assertQueued(\App\Mail\Transactional::class, function (Mailable $mail) {
-            if (! $mail->hasTo('user@example.com') || ! str_contains($mail->envelope()->subject, 'Reset your eSawda password')) {
+        Mail::assertQueued(Transactional::class, function (Mailable $mail) {
+            if (!$mail->hasTo('user@example.com') || !str_contains($mail->envelope()->subject, 'Reset your eSawda password')) {
                 return false;
             }
             $html = $mail->render();
+
             return str_contains($html, 'Reset your password')
                 && str_contains($html, '/auth/reset?token=');
         });
@@ -319,16 +311,17 @@ class TransactionalEmailsTest extends TestCase
         config(['quickad.admin_email' => 'admin@esawda.com']);
 
         $this->postJson('/api/v1/contact', [
-            'name'    => 'Visitor',
-            'email'   => 'visitor@example.com',
+            'name' => 'Visitor',
+            'email' => 'visitor@example.com',
             'subject' => 'Need help',
             'message' => 'Hello, I need assistance.',
         ])->assertOk();
 
-        Mail::assertQueued(\App\Mail\Transactional::class, function (Mailable $mail) {
-            if (! $mail->hasTo('admin@esawda.com') || ! str_contains($mail->envelope()->subject, 'Need help')) {
+        Mail::assertQueued(Transactional::class, function (Mailable $mail) {
+            if (!$mail->hasTo('admin@esawda.com') || !str_contains($mail->envelope()->subject, 'Need help')) {
                 return false;
             }
+
             return str_contains($mail->render(), 'Hello, I need assistance.');
         });
     }
@@ -339,7 +332,7 @@ class TransactionalEmailsTest extends TestCase
 
         $user = $this->user(['email' => 'user@example.com', 'group_id' => 'gold']);
 
-        $plan = \App\Models\Plan::create([
+        $plan = Plan::create([
             'name' => 'Gold',
             'monthly_price' => 500,
             'annual_price' => 5000,
@@ -349,22 +342,21 @@ class TransactionalEmailsTest extends TestCase
         ]);
 
         $tx = Transaction::create([
-            'seller_id'          => $user->id,
-            'product_id'         => 0,
-            'plan_id'            => $plan->id,
-            'amount'             => 500,
-            'status'             => 'success',
-            'purpose'            => 'plan',
+            'seller_id' => $user->id,
+            'product_id' => 0,
+            'plan_id' => $plan->id,
+            'amount' => 500,
+            'status' => 'success',
+            'purpose' => 'plan',
             'transaction_gatway' => 'sslcommerz',
-            'meta'               => json_encode(['cadence' => 'monthly']),
-            'created_at'         => now(),
-            'updated_at'         => now(),
+            'meta' => json_encode(['cadence' => 'monthly']),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         FulfilTransactionJob::dispatchSync($tx->id);
 
-        Mail::assertQueued(\App\Mail\Transactional::class, fn (Mailable $mail) =>
-            $mail->hasTo('user@example.com')
+        Mail::assertQueued(Transactional::class, fn (Mailable $mail) => $mail->hasTo('user@example.com')
             && str_contains($mail->envelope()->subject, 'plan is active')
         );
     }

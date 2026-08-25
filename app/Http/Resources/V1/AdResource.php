@@ -11,60 +11,60 @@ class AdResource extends BaseResource
     public function toArray($request): array
     {
         $images = $this->images($this->screen_shot);
-        $thumb  = $images[0]['thumb'] ?? null;
+        $thumb = $images[0]['thumb'] ?? null;
 
         // When the seller hasn't uploaded any pictures we still want a
         // presentable card everywhere the ad appears. Generate an SVG
         // placeholder tinted from the ad title so every card gets a
         // unique-looking (but consistent per-ad) tile.
-        if (! $thumb) {
+        if (!$thumb) {
             $thumb = self::placeholderSvg((string) $this->product_name);
         }
 
         return [
-            'id'          => (int) $this->id,
-            'slug'        => $this->slug,
-            'url_slug'    => $this->id . '-' . ($this->slug ?: 'ad'),   // frontend URL segment
-            'title'       => $this->product_name,
-            'price'       => (int) $this->price,
-            'negotiable'  => $this->bool($this->negotiable),
-            'condition'   => $this->condition ?? 'used',   // 'new' | 'used'
-            'status'      => $this->status?->value,        // draft|pending|active|sold_out|removed|expire|rejected
-            'thumbnail'   => $thumb,
-            'featured'    => $this->bool($this->featured),
-            'urgent'      => $this->bool($this->urgent),
-            'highlight'   => $this->bool($this->highlight),
-            'paid'        => $this->bool($this->paid),
-            'location'    => [
-                'city'    => $this->city,
-                'state'   => $this->state,
+            'id' => (int) $this->id,
+            'slug' => $this->slug,
+            'url_slug' => $this->id.'-'.($this->slug ?: 'ad'),   // frontend URL segment
+            'title' => $this->product_name,
+            'price' => (int) $this->price,
+            'negotiable' => $this->bool($this->negotiable),
+            'condition' => $this->condition ?? 'used',   // 'new' | 'used'
+            'status' => $this->status?->value,        // draft|pending|active|sold_out|removed|expire|rejected
+            'thumbnail' => $thumb,
+            'featured' => $this->bool($this->featured),
+            'urgent' => $this->bool($this->urgent),
+            'highlight' => $this->bool($this->highlight),
+            'paid' => $this->bool($this->paid),
+            'location' => [
+                'city' => $this->city,
+                'state' => $this->state,
                 'country' => $this->country,
             ],
             // NB: legacy `category` column collides with the `category`
             // relation name. When the relation is loaded Eloquent stores
             // it under getRelation('category'); we read it explicitly to
             // avoid the collision.
-            'category'    => $this->when($this->relationLoaded('category'), fn () => (
+            'category' => $this->when($this->relationLoaded('category'), fn () => (
                 ($c = $this->getRelation('category')) ? [
-                    'id'   => (int) $c->cat_id,
+                    'id' => (int) $c->cat_id,
                     'name' => $c->cat_name,
                     'slug' => $c->slug,
                 ] : null
             )),
             'sub_category' => $this->when($this->relationLoaded('subCategory'), fn () => (
                 ($sc = $this->getRelation('subCategory')) ? [
-                    'id'   => (int) $sc->sub_cat_id,
+                    'id' => (int) $sc->sub_cat_id,
                     'name' => $sc->sub_cat_name,
                     'slug' => $sc->slug,
                 ] : null
             )),
-            'created_at'   => optional($this->created_at)->toIso8601String(),
-            'expires_at'   => $this->unixToIso($this->expire_date),
+            'created_at' => optional($this->created_at)->toIso8601String(),
+            'expires_at' => $this->unixToIso($this->expire_date),
             'bundle_items' => $this->whenLoaded('bundleItems', fn () => $this->bundleItems
                 ? $this->bundleItems->map(fn ($p) => [
-                    'id'        => (int) $p->id,
-                    'title'     => $p->product_name,
-                    'price'     => (int) $p->price,
+                    'id' => (int) $p->id,
+                    'title' => $p->product_name,
+                    'price' => (int) $p->price,
                     'thumbnail' => ($imgs = $this->images($p->screen_shot)) ? $imgs[0]['thumb'] : null,
                 ])->values()
                 : null),
@@ -83,8 +83,8 @@ class AdResource extends BaseResource
             ['#004D40', '#006C4F'], ['#00342B', '#004D40'], ['#006C4F', '#1EB286'],
             ['#0F6B4F', '#149A6B'], ['#00251E', '#004D40'], ['#1EB286', '#59DDAE'],
         ];
-        $key   = abs(crc32($title));
-        $pair  = $palette[$key % count($palette)];
+        $key = abs(crc32($title));
+        $pair = $palette[$key % count($palette)];
         $letter = mb_strtoupper(mb_substr(trim($title) ?: '?', 0, 1));
 
         $svg = <<<SVG
@@ -102,6 +102,6 @@ class AdResource extends BaseResource
 </svg>
 SVG;
 
-        return 'data:image/svg+xml;utf8,' . rawurlencode($svg);
+        return 'data:image/svg+xml;utf8,'.rawurlencode($svg);
     }
 }

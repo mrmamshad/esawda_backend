@@ -25,11 +25,9 @@ use Illuminate\Http\Request;
 trait Filterable
 {
     /**
-     * @param  Builder  $query
-     * @param  Request  $request
-     * @param  array    $allowedFilters   ['api_field' => 'db_column', ...]
-     * @param  array    $allowedSorts     ['api_field' => 'db_column', ...]
-     * @param  array    $fullTextCols     ['product_name', 'description', ...]
+     * @param  array  $allowedFilters  ['api_field' => 'db_column', ...]
+     * @param  array  $allowedSorts  ['api_field' => 'db_column', ...]
+     * @param  array  $fullTextCols  ['product_name', 'description', ...]
      */
     protected function applyFilters(
         Builder $query,
@@ -41,7 +39,9 @@ trait Filterable
         // ---- Structured filters ------------------------------------------
         $filters = (array) $request->query('filter', []);
         foreach ($filters as $field => $spec) {
-            if (! array_key_exists($field, $allowedFilters)) continue;
+            if (!array_key_exists($field, $allowedFilters)) {
+                continue;
+            }
             $col = $allowedFilters[$field];
 
             if (is_array($spec)) {
@@ -67,9 +67,14 @@ trait Filterable
         if ($sort !== '') {
             foreach (explode(',', $sort) as $spec) {
                 $spec = trim($spec);
-                if ($spec === '') continue;
+                if ($spec === '') {
+                    continue;
+                }
                 $dir = 'asc';
-                if (str_starts_with($spec, '-')) { $dir = 'desc'; $spec = substr($spec, 1); }
+                if (str_starts_with($spec, '-')) {
+                    $dir = 'desc';
+                    $spec = substr($spec, 1);
+                }
                 if (isset($allowedSorts[$spec])) {
                     $query->orderBy($allowedSorts[$spec], $dir);
                 }
@@ -82,12 +87,18 @@ trait Filterable
     private function applyOperator(Builder $q, string $col, string $op, $val): void
     {
         switch ($op) {
-            case 'gte': $q->where($col, '>=', $val); break;
-            case 'lte': $q->where($col, '<=', $val); break;
-            case 'gt':  $q->where($col, '>',  $val); break;
-            case 'lt':  $q->where($col, '<',  $val); break;
-            case 'ne':  $q->where($col, '!=', $val); break;
-            case 'like':$q->where($col, 'like', '%' . $val . '%'); break;
+            case 'gte': $q->where($col, '>=', $val);
+                break;
+            case 'lte': $q->where($col, '<=', $val);
+                break;
+            case 'gt':  $q->where($col, '>', $val);
+                break;
+            case 'lt':  $q->where($col, '<', $val);
+                break;
+            case 'ne':  $q->where($col, '!=', $val);
+                break;
+            case 'like':$q->where($col, 'like', '%'.$val.'%');
+                break;
             case 'in':
                 $arr = is_array($val) ? $val : explode(',', (string) $val);
                 $q->whereIn($col, array_map('trim', $arr));

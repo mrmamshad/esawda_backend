@@ -3,11 +3,14 @@
 namespace Tests\Feature;
 
 use App\Jobs\FulfilTransactionJob;
+use App\Jobs\RevalidateFrontendJob;
 use App\Models\Plan;
 use App\Models\Post;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Payment\PaymentManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class PayToPostTest extends TestCase
@@ -46,7 +49,7 @@ class PayToPostTest extends TestCase
         ]);
 
         $response->assertOk()
-                 ->assertJsonStructure(['data' => ['transaction_id', 'gateway_url']]);
+            ->assertJsonStructure(['data' => ['transaction_id', 'gateway_url']]);
 
         $this->assertDatabaseHas('transaction', [
             'seller_id' => $user->id,
@@ -111,7 +114,7 @@ class PayToPostTest extends TestCase
         ]);
 
         $response->assertCreated()
-                 ->assertJson(['data' => ['title' => 'Subscription Ad']]);
+            ->assertJson(['data' => ['title' => 'Subscription Ad']]);
 
         $this->assertSame(1, (int) $user->fresh()->ads_remaining);
         $this->assertDatabaseHas('product', [
@@ -143,7 +146,7 @@ class PayToPostTest extends TestCase
 
     public function test_pending_ad_not_visible_to_other_user_detail(): void
     {
-        $user  = User::factory()->create();
+        $user = User::factory()->create();
         $owner = User::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
@@ -161,7 +164,7 @@ class PayToPostTest extends TestCase
         ]);
 
         $this->json('GET', "/api/v1/ads/{$pending->id}-secret", [], ['Authorization' => "Bearer {$token}"])
-             ->assertNotFound();
+            ->assertNotFound();
     }
 
     public function test_ad_owner_can_preview_pending_detail(): void
@@ -183,7 +186,7 @@ class PayToPostTest extends TestCase
         ]);
 
         $this->json('GET', "/api/v1/ads/{$pending->id}-secret", [], ['Authorization' => "Bearer {$token}"])
-             ->assertOk();
+            ->assertOk();
     }
 
     public function test_transaction_status_endpoint(): void
@@ -205,13 +208,13 @@ class PayToPostTest extends TestCase
         $response = $this->actingAs($user)->getJson("/api/v1/checkout/transactions/{$tx->id}");
 
         $response->assertOk()
-                 ->assertJson([
-                     'data' => [
-                         'id' => $tx->id,
-                         'status' => 'success',
-                         'purpose' => 'ad_post',
-                     ],
-                 ]);
+            ->assertJson([
+                'data' => [
+                    'id' => $tx->id,
+                    'status' => 'success',
+                    'purpose' => 'ad_post',
+                ],
+            ]);
     }
 
     public function test_plan_purchase_writes_plan_expires_at_column(): void
@@ -350,8 +353,8 @@ class PayToPostTest extends TestCase
     {
         config(['sslcommerz.store_password' => 'qwerty']);
 
-        \Illuminate\Support\Facades\Http::fake([
-            '*/validator/api/validationserverAPI.php' => \Illuminate\Support\Facades\Http::response([
+        Http::fake([
+            '*/validator/api/validationserverAPI.php' => Http::response([
                 'status' => 'VALID',
                 'amount' => '200.00',
             ]),
@@ -383,15 +386,40 @@ class PayToPostTest extends TestCase
             'store_id' => 'testbox',
             'card_type' => 'VISA-Dutch Bangla',
             'verify_key' => 'amount,store_amount,status,tran_id,val_id',
-            'verify_sign_sha2' => hash('sha256', 'amount=200.00&store_amount=195.00&status=VALID&store_passwd=' . hash('sha256', 'qwerty') . '&tran_id=ES_4_1786789110&val_id=260815161856cQHW6sXY66p447Q'),
+            'verify_sign_sha2' => hash('sha256', 'amount=200.00&store_amount=195.00&status=VALID&store_passwd='.hash('sha256', 'qwerty').'&tran_id=ES_4_1786789110&val_id=260815161856cQHW6sXY66p447Q'),
         ];
 
-        $gw = (new \App\Services\Payment\PaymentManager())->get('sslcommerz');
+        $gw = (new PaymentManager)->get('sslcommerz');
 
         // validateWithApi would fail (no real network) but the hash check
         // runs first; we just assert it doesn't blow up and returns the tx.
         $result = $gw->handleCallback($payload);
         $this->assertSame($tx->id, $result->id);
+    }
+
+    public function test_admin_approve_dispatches_frontend_revalidation(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $owner = User::factory()->create();
+        $ad = Post::create([
+            'user_id' => $owner->id,
+            'product_name' => 'Revalidate Test',
+            'description' => 'Should trigger revalidation on approve',
+            'price' => 100,
+            'category' => 1,
+            'condition' => 'new',
+            'status' => 'pending',
+            'hide' => '0',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        \Illuminate\Support\Facades\Queue::fake();
+        \Illuminate\Support\Facades\Cache::shouldReceive('flush')->once();
+
+        $this->actingAs($admin)->postJson("/api/v1/admin/ads/{$ad->id}/approve")->assertOk();
+
+        \Illuminate\Support\Facades\Queue::assertPushed(RevalidateFrontendJob::class);
     }
 
     public function test_sslcommerz_callback_rejects_bad_hash(): void
@@ -424,7 +452,7 @@ class PayToPostTest extends TestCase
             'verify_sign_sha2' => str_repeat('0', 64), // forged signature
         ];
 
-        $gw = (new \App\Services\Payment\PaymentManager())->get('sslcommerz');
+        $gw = (new PaymentManager)->get('sslcommerz');
         $result = $gw->handleCallback($payload);
 
         $this->assertSame($tx->id, $result->id);

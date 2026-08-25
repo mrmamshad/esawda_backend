@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Events\MessageSent;
-use App\Models\Message;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -50,7 +49,7 @@ class MessageBroadcastTest extends TestCase
             $channels = $event->broadcastOn();
 
             // Should broadcast to both sender and receiver private channels
-            $channelNames = array_map(fn($ch) => $ch->name, $channels);
+            $channelNames = array_map(fn ($ch) => $ch->name, $channels);
 
             return in_array("private-user.{$sender->id}", $channelNames) &&
                    in_array("private-user.{$receiver->id}", $channelNames);
@@ -67,7 +66,7 @@ class MessageBroadcastTest extends TestCase
         ]);
 
         $response->assertStatus(422)
-                 ->assertJson(['error' => ['code' => 'SELF_MESSAGE']]);
+            ->assertJson(['error' => ['code' => 'SELF_MESSAGE']]);
 
         Event::assertNotDispatched(MessageSent::class);
     }

@@ -8,11 +8,16 @@ use Illuminate\Support\Facades\Schema;
  * Adds an optional moderation note to an ad when an admin rejects it.
  * Stored so the seller can see why the listing was turned down.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
-        if (! Schema::hasTable('product')) return;
-        if (Schema::hasColumn('product', 'reject_reason')) return;
+        if (!Schema::hasTable('product')) {
+            return;
+        }
+        if (Schema::hasColumn('product', 'reject_reason')) {
+            return;
+        }
         Schema::table('product', function (Blueprint $t) {
             $t->text('reject_reason')->nullable()->after('admin_seen');
         });

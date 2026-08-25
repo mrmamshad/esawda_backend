@@ -14,14 +14,14 @@ class AuthApiTest extends TestCase
     public function test_register_returns_wrapped_envelope_with_token(): void
     {
         $res = $this->postJson('/api/v1/auth/register', [
-            'username'              => 'alice',
-            'email'                 => 'alice@example.com',
-            'password'              => 'password123',
+            'username' => 'alice',
+            'email' => 'alice@example.com',
+            'password' => 'password123',
             'password_confirmation' => 'password123',
-            'name'                  => 'Alice',
+            'name' => 'Alice',
         ]);
         $res->assertCreated()
-            ->assertJsonStructure(['data' => ['user' => ['id','username','email'], 'token']]);
+            ->assertJsonStructure(['data' => ['user' => ['id', 'username', 'email'], 'token']]);
 
         $this->assertDatabaseHas('user', ['email' => 'alice@example.com']);
     }
@@ -52,20 +52,20 @@ class AuthApiTest extends TestCase
 
         $login = $this->postJson('/api/v1/auth/login', [
             'identifier' => 'c@x.com',
-            'password'   => 'secret123',
+            'password' => 'secret123',
         ])->assertOk()->json();
 
         $token = $login['data']['token'];
         $this->assertNotEmpty($token);
 
         $this->withHeader('Authorization', "Bearer {$token}")
-             ->getJson('/api/v1/auth/me')
-             ->assertOk()
-             ->assertJsonPath('data.user.username', 'charlie');
+            ->getJson('/api/v1/auth/me')
+            ->assertOk()
+            ->assertJsonPath('data.user.username', 'charlie');
 
         $this->withHeader('Authorization', "Bearer {$token}")
-             ->postJson('/api/v1/auth/logout')
-             ->assertOk();
+            ->postJson('/api/v1/auth/logout')
+            ->assertOk();
 
         // Verify the token was actually revoked at the DB layer. (Re-hitting
         // /me in the same test process is unreliable because the HTTP kernel

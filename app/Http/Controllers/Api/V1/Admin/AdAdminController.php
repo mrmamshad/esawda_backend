@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\RevalidateFrontendJob;
 use App\Models\Post;
 use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
@@ -16,9 +17,15 @@ class AdAdminController extends Controller
     {
         $q = Post::query()->with(['user:id,username,name', 'category']);
 
-        if ($status = $request->query('status'))       $q->where('status', $status);
-        if ($condition = $request->query('condition')) $q->where('condition', $condition);
-        if ($request->boolean('featured'))             $q->where('featured', '1');
+        if ($status = $request->query('status')) {
+            $q->where('status', $status);
+        }
+        if ($condition = $request->query('condition')) {
+            $q->where('condition', $condition);
+        }
+        if ($request->boolean('featured')) {
+            $q->where('featured', '1');
+        }
         if ($s = trim((string) $request->query('q', ''))) {
             $q->where(function ($sub) use ($s) {
                 $sub->where('product_name', 'like', "%{$s}%")
@@ -27,6 +34,7 @@ class AdAdminController extends Controller
         }
 
         $q->orderByDesc('id');
+
         return $this->ok($q->paginate((int) min(100, max(1, (int) $request->query('per_page', 20)))));
     }
 
@@ -40,16 +48,20 @@ class AdAdminController extends Controller
         $post = Post::findOrFail($id);
         $post->forceFill(['status' => 'active', 'hide' => '0', 'updated_at' => now()])->save();
         Cache::flush();
+        RevalidateFrontendJob::dispatch();
         $this->mail->adApprovedToSeller($post->load('user'));
+
         return $this->ok(['message' => 'Ad approved.', 'ad' => $post]);
     }
 
     public function reject(int $id, Request $request)
     {
         $reason = (string) $request->input('reason', '');
-        $post   = Post::findOrFail($id);
+        $post = Post::findOrFail($id);
         $post->forceFill(['status' => 'rejected', 'hide' => '1', 'reject_reason' => $reason, 'updated_at' => now()])->save();
+        RevalidateFrontendJob::dispatch();
         $this->mail->adRejectedToSeller($post->load('user'), $reason);
+
         return $this->ok(['message' => 'Ad rejected.', 'ad' => $post]);
     }
 
@@ -57,6 +69,9 @@ class AdAdminController extends Controller
     {
         $post = Post::findOrFail($id);
         $post->forceFill(['featured' => '1', 'updated_at' => now()])->save();
+        Cache::flush();
+        RevalidateFrontendJob::dispatch();
+
         return $this->ok($post);
     }
 
@@ -64,12 +79,18 @@ class AdAdminController extends Controller
     {
         $post = Post::findOrFail($id);
         $post->forceFill(['featured' => '0', 'updated_at' => now()])->save();
+        Cache::flush();
+        RevalidateFrontendJob::dispatch();
+
         return $this->ok($post);
     }
 
     public function destroy(int $id)
     {
         Post::findOrFail($id)->delete();
+        Cache::flush();
+        RevalidateFrontendJob::dispatch();
+
         return $this->ok(['message' => 'Ad deleted.']);
     }
 }

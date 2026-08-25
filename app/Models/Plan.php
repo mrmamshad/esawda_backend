@@ -10,6 +10,8 @@ class Plan extends Model
     use HasFactory;
 
     protected $table = 'plans';
+
     public $timestamps = false;
+
     protected $guarded = [];
 }

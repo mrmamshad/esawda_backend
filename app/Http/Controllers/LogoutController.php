@@ -12,7 +12,8 @@ class LogoutController extends Controller
     public function index(Request $request)
     {
         $this->auth->logout($request);
+
         return redirect()->route('auth.login')
-                         ->with('flash_success', 'You have been logged out.');
+            ->with('flash_success', 'You have been logged out.');
     }
 }

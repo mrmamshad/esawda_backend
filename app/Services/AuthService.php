@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
@@ -22,6 +22,7 @@ use Illuminate\Support\Str;
 class AuthService
 {
     private const MAX_BAD_ATTEMPTS = 5;
+
     private const BRUTE_WINDOW_SECONDS = 2 * 60 * 60; // 2 hours
 
     /**
@@ -33,7 +34,7 @@ class AuthService
         $field = filter_var($emailOrUsername, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
 
         $user = User::where($field, $emailOrUsername)->first();
-        if (! $user) {
+        if (!$user) {
             return null;
         }
 
@@ -41,15 +42,17 @@ class AuthService
             return null;
         }
 
-        if (! Hash::check($password, $user->password_hash)) {
+        if (!Hash::check($password, $user->password_hash)) {
             DB::table('login_attempts')->insert([
                 'user_id' => $user->id,
-                'time'    => (string) time(),
+                'time' => (string) time(),
             ]);
+
             return null;
         }
 
         $this->createSession($user, $request);
+
         return $user;
     }
 
@@ -60,13 +63,13 @@ class AuthService
      */
     public function createSession(User $user, Request $request): void
     {
-        $userAgent   = (string) $request->userAgent();
-        $loginString = hash('sha512', $user->password_hash . $userAgent);
+        $userAgent = (string) $request->userAgent();
+        $loginString = hash('sha512', $user->password_hash.$userAgent);
 
         $request->session()->put('user', [
-            'id'            => $user->id,
-            'username'      => $user->username,
-            'login_string'  => $loginString,
+            'id' => $user->id,
+            'username' => $user->username,
+            'login_string' => $loginString,
         ]);
 
         // Laravel's built-in guard — keeps `Auth::user()` working too.
@@ -81,16 +84,17 @@ class AuthService
     public function check(Request $request): bool
     {
         $sess = $request->session()->get('user');
-        if (! $sess || empty($sess['id']) || empty($sess['login_string'])) {
+        if (!$sess || empty($sess['id']) || empty($sess['login_string'])) {
             return $this->checkPersistentCookie($request);
         }
 
         $user = User::find($sess['id']);
-        if (! $user) {
+        if (!$user) {
             return false;
         }
 
-        $expected = hash('sha512', $user->password_hash . (string) $request->userAgent());
+        $expected = hash('sha512', $user->password_hash.(string) $request->userAgent());
+
         return hash_equals($expected, $sess['login_string']);
     }
 
@@ -98,22 +102,24 @@ class AuthService
     private function checkPersistentCookie(Request $request): bool
     {
         $raw = $request->cookie('qurm');
-        if (! $raw) {
+        if (!$raw) {
             return false;
         }
         [$id, $hash] = array_pad(explode('.', $raw, 2), 2, null);
-        if (! $id || ! $hash) {
+        if (!$id || !$hash) {
             return false;
         }
         $user = User::find($id);
-        if (! $user) {
+        if (!$user) {
             return false;
         }
-        $expected = hash('sha512', $user->password_hash . (string) $request->userAgent());
+        $expected = hash('sha512', $user->password_hash.(string) $request->userAgent());
         if (hash_equals($expected, $hash)) {
             $this->createSession($user, $request);
+
             return true;
         }
+
         return false;
     }
 
@@ -125,6 +131,7 @@ class AuthService
             ->where('user_id', $userId)
             ->where('time', '>', (string) $threshold)
             ->count();
+
         return $count > self::MAX_BAD_ATTEMPTS;
     }
 
@@ -149,17 +156,18 @@ class AuthService
     {
         $confirm = Str::random(32);
         $user = User::create([
-            'group_id'      => 'free',
-            'user_type'     => $data['user_type'] ?? 'user',
-            'username'      => $data['username'],
-            'email'         => $data['email'],
-            'name'          => $data['name'] ?? $data['username'],
+            'group_id' => 'free',
+            'user_type' => $data['user_type'] ?? 'user',
+            'username' => $data['username'],
+            'email' => $data['email'],
+            'name' => $data['name'] ?? $data['username'],
             'password_hash' => Hash::make($data['password']),
-            'confirm'       => $confirm,
-            'status'        => '0',
-            'created_at'    => now(),
-            'updated_at'    => now(),
+            'confirm' => $confirm,
+            'status' => '0',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
+
         return ['user' => $user, 'confirm_token' => $confirm];
     }
 
@@ -167,10 +175,13 @@ class AuthService
     public function confirmSignup(string $token): ?User
     {
         $user = User::where('confirm', $token)->first();
-        if (! $user) return null;
-        $user->status  = '1';
+        if (!$user) {
+            return null;
+        }
+        $user->status = '1';
         $user->confirm = null;
         $user->save();
+
         return $user;
     }
 
@@ -178,20 +189,26 @@ class AuthService
     public function makeForgotToken(string $email): ?array
     {
         $user = User::where('email', $email)->first();
-        if (! $user) return null;
+        if (!$user) {
+            return null;
+        }
         $user->forgot = Str::random(40);
         $user->save();
+
         return ['user' => $user, 'token' => $user->forgot];
     }
 
     public function resetPassword(string $token, string $newPassword): ?User
     {
         $user = User::where('forgot', $token)->first();
-        if (! $user) return null;
+        if (!$user) {
+            return null;
+        }
         $user->password_hash = Hash::make($newPassword);
-        $user->forgot        = null;
-        $user->updated_at    = now();
+        $user->forgot = null;
+        $user->updated_at = now();
         $user->save();
+
         return $user;
     }
 

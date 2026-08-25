@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Transaction;
 use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class TransactionAdminController extends Controller
 {
@@ -17,11 +18,18 @@ class TransactionAdminController extends Controller
     {
         $q = Transaction::query()->with('seller:id,username,email');
 
-        if ($s = $request->query('status'))  $q->where('status', $s);
-        if ($g = $request->query('gateway')) $q->where('transaction_gatway', $g);
-        if ($p = $request->query('purpose')) $q->where('purpose', $p);
+        if ($s = $request->query('status')) {
+            $q->where('status', $s);
+        }
+        if ($g = $request->query('gateway')) {
+            $q->where('transaction_gatway', $g);
+        }
+        if ($p = $request->query('purpose')) {
+            $q->where('purpose', $p);
+        }
 
         $q->orderByDesc('id');
+
         return $this->ok($q->paginate((int) min(100, max(1, (int) $request->query('per_page', 20)))));
     }
 
@@ -51,7 +59,7 @@ class TransactionAdminController extends Controller
         try {
             FulfilTransactionJob::dispatchSync($tx->id);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Fulfilment skipped for manually marked transaction', [
+            Log::warning('Fulfilment skipped for manually marked transaction', [
                 'transaction_id' => $tx->id,
                 'error' => $e->getMessage(),
             ]);

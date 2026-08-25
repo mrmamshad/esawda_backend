@@ -34,34 +34,34 @@ class SocialAuthController extends Controller
         ]);
 
         $profile = match ($provider) {
-            'google'   => $this->fetchGoogle($data['access_token']),
+            'google' => $this->fetchGoogle($data['access_token']),
             'facebook' => $this->fetchFacebook($data['access_token']),
-            default    => throw ValidationException::withMessages(['provider' => "Unsupported provider: {$provider}"]),
+            default => throw ValidationException::withMessages(['provider' => "Unsupported provider: {$provider}"]),
         };
 
         // Upsert by email so returning users keep the same account regardless
         // of which social provider they last used.
         $user = User::where('email', $profile['email'])->first();
-        if (! $user) {
+        if (!$user) {
             $user = User::forceCreate([
-                'username'      => $this->uniqueUsername($profile['email']),
-                'email'         => $profile['email'],
-                'name'          => $profile['name'] ?? Str::before($profile['email'], '@'),
+                'username' => $this->uniqueUsername($profile['email']),
+                'email' => $profile['email'],
+                'name' => $profile['name'] ?? Str::before($profile['email'], '@'),
                 'password_hash' => Hash::make(Str::random(40)),   // never used — social only
-                'status'        => '1',
-                'group_id'      => 'free',
-                'user_type'     => 'user',
-                'image'         => $profile['avatar_url'] ?? 'default_user.png',
-                'created_at'    => now(),
-                'updated_at'    => now(),
+                'status' => '1',
+                'group_id' => 'free',
+                'user_type' => 'user',
+                'image' => $profile['avatar_url'] ?? 'default_user.png',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
 
-        $token = $user->createToken('social:' . $provider)->plainTextToken;
+        $token = $user->createToken('social:'.$provider)->plainTextToken;
 
         return $this->withAuthCookie(response()->json([
             'data' => [
-                'user'  => (new UserResource($user))->resolve(),
+                'user' => (new UserResource($user))->resolve(),
                 'token' => $token,
             ],
         ]), $token);
@@ -73,7 +73,7 @@ class SocialAuthController extends Controller
     private function fetchGoogle(string $token): array
     {
         $res = Http::withToken($token)->get('https://www.googleapis.com/oauth2/v3/userinfo');
-        if (! $res->ok()) {
+        if (!$res->ok()) {
             Log::warning('google userinfo failed', ['status' => $res->status(), 'body' => $res->body()]);
             throw ValidationException::withMessages(['access_token' => 'Google token rejected.']);
         }
@@ -81,9 +81,10 @@ class SocialAuthController extends Controller
         if (empty($j['email'])) {
             throw ValidationException::withMessages(['access_token' => 'Google token did not include an email address.']);
         }
+
         return [
-            'email'      => $j['email'],
-            'name'       => $j['name']    ?? null,
+            'email' => $j['email'],
+            'name' => $j['name'] ?? null,
             'avatar_url' => $j['picture'] ?? null,
         ];
     }
@@ -93,9 +94,9 @@ class SocialAuthController extends Controller
     {
         $res = Http::get('https://graph.facebook.com/me', [
             'access_token' => $token,
-            'fields'       => 'id,name,email,picture.type(large)',
+            'fields' => 'id,name,email,picture.type(large)',
         ]);
-        if (! $res->ok()) {
+        if (!$res->ok()) {
             Log::warning('facebook graph failed', ['status' => $res->status(), 'body' => $res->body()]);
             throw ValidationException::withMessages(['access_token' => 'Facebook token rejected.']);
         }
@@ -103,9 +104,10 @@ class SocialAuthController extends Controller
         if (empty($j['email'])) {
             throw ValidationException::withMessages(['access_token' => 'Facebook did not return an email — please grant email permission.']);
         }
+
         return [
-            'email'      => $j['email'],
-            'name'       => $j['name'] ?? null,
+            'email' => $j['email'],
+            'name' => $j['name'] ?? null,
             'avatar_url' => $j['picture']['data']['url'] ?? null,
         ];
     }
@@ -113,11 +115,12 @@ class SocialAuthController extends Controller
     private function uniqueUsername(string $email): string
     {
         $base = Str::slug(Str::before($email, '@'), '_') ?: 'user';
-        $u    = $base;
-        $i    = 0;
+        $u = $base;
+        $i = 0;
         while (DB::table('users')->where('username', $u)->exists()) {
-            $u = $base . '_' . (++$i);
+            $u = $base.'_'.(++$i);
         }
+
         return $u;
     }
 }

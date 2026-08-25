@@ -11,10 +11,13 @@ use Illuminate\Support\Facades\Schema;
  * (from_id,to_id,seen) and idx_messages_thread are narrower; this wider
  * (from_id,to_id,message_date) ordering covers the conversation sort.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
-        if (! Schema::hasTable('messages')) return;
+        if (!Schema::hasTable('messages')) {
+            return;
+        }
         Schema::table('messages', function (Blueprint $t) {
             $t->index(['from_id', 'to_id', 'message_date'], 'idx_messages_convo');
         });
@@ -22,9 +25,14 @@ return new class extends Migration {
 
     public function down(): void
     {
-        if (! Schema::hasTable('messages')) return;
+        if (!Schema::hasTable('messages')) {
+            return;
+        }
         Schema::table('messages', function (Blueprint $t) {
-            try { $t->dropIndex('idx_messages_convo'); } catch (\Throwable $e) { /* ignore */ }
+            try {
+                $t->dropIndex('idx_messages_convo');
+            } catch (Throwable $e) { /* ignore */
+            }
         });
     }
 };

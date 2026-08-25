@@ -2,47 +2,29 @@
 
 namespace App\Models;
 
+use App\Enums\TransactionStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class Transaction extends Model
 {
     protected $table = 'transaction';
+
     public $timestamps = false;
+
     protected $guarded = [];
 
     protected $casts = [
-        'status'       => \App\Enums\TransactionStatus::class,
+        'status' => TransactionStatus::class,
         'fulfilled_at' => 'datetime',
-        'meta'         => 'array',
     ];
 
-    public function seller() { return $this->belongsTo(User::class, 'seller_id'); }
-    public function post()   { return $this->belongsTo(Post::class, 'product_id'); }
-
-    /**
-     * Virtual FKs backed by the accessors below. The legacy `seller_id`
-     * column actually stores the payer, while the real product owner lives
-     * in `meta.seller_id` for purchases; ad upgrades / plan buys involve a
-     * single account (the one that paid).
-     */
-
-    public function buyer()
+    public function seller()
     {
-        return $this->belongsTo(User::class, 'buyer_id', 'id');
+        return $this->belongsTo(User::class, 'seller_id');
     }
 
-    public function getBuyerIdAttribute(): ?int
+    public function post()
     {
-        return $this->meta['buyer_id'] ?? $this->seller_id;
-    }
-
-    public function sellerInfo()
-    {
-        return $this->belongsTo(User::class, 'seller_info_id', 'id');
-    }
-
-    public function getSellerInfoIdAttribute(): ?int
-    {
-        return $this->meta['seller_id'] ?? $this->seller_id;
+        return $this->belongsTo(Post::class, 'product_id');
     }
 }

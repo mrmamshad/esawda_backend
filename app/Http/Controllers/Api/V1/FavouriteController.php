@@ -27,9 +27,10 @@ class FavouriteController extends Controller
     public function index(Request $request)
     {
         $userId = $request->user()->id;
-        $ids    = Favourite::where('user_id', $userId)->pluck('product_id');
+        $ids = Favourite::where('user_id', $userId)->pluck('product_id');
 
         $q = Post::query()->whereIn('id', $ids)->with(['category', 'subCategory']);
+
         return $this->ok(AdResource::collection($q->paginate($this->perPage($request, 12))));
     }
 
@@ -39,7 +40,7 @@ class FavouriteController extends Controller
         Post::findOrFail($id);
 
         Favourite::firstOrCreate([
-            'user_id'    => $request->user()->id,
+            'user_id' => $request->user()->id,
             'product_id' => $id,
         ]);
 
@@ -49,8 +50,8 @@ class FavouriteController extends Controller
     public function remove(int $id, Request $request)
     {
         Favourite::where('user_id', $request->user()->id)
-                 ->where('product_id', $id)
-                 ->delete();
+            ->where('product_id', $id)
+            ->delete();
 
         return $this->noContent();
     }

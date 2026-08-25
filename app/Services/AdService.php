@@ -16,10 +16,9 @@ class AdService
 {
     public function createFromRequest(array $data, int $userId): Post
     {
-        // TODO(migration): port from php/ad-post.php
         $data['user_id'] = $userId;
-        $data['slug']    = $data['slug'] ?? Str::slug($data['product_name'] ?? '');
-        $data['status']  = $data['status'] ?? 'pending';
+        $data['slug'] = $data['slug'] ?? Str::slug($data['product_name'] ?? '');
+        $data['status'] = $data['status'] ?? 'pending';
 
         return Post::create($data);
     }
@@ -27,10 +26,10 @@ class AdService
     public function expireDueAds(): int
     {
         return Post::where('status', 'active')
-                   ->where('hide', '0')
-                   ->whereNotNull('expire_date')
-                   ->where('expire_date', '>', 0)
-                   ->where('expire_date', '<', time())
-                   ->update(['status' => 'expire']);
+            ->where('hide', '0')
+            ->whereNotNull('expire_date')
+            ->where('expire_date', '>', 0)
+            ->where('expire_date', '<', time())
+            ->update(['status' => 'expire']);
     }
 }

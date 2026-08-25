@@ -8,9 +8,13 @@ namespace App\Services\Payment\Gateways;
  */
 class PayumoneyGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'payumoney'; }
-    public function label(): string { return 'PayU Money'; }
+    public function slug(): string
+    {
+        return 'payumoney';
+    }
 
-    // TODO(migration): implement gateway-specific SDK flow from
-    // includes/payments/payumoney/*.php
+    public function label(): string
+    {
+        return 'PayU Money';
+    }
 }

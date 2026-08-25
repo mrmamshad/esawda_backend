@@ -17,8 +17,8 @@
 */
 
 return [
-    'mode'           => env('SSLCOMMERZ_MODE', 'sandbox'), // sandbox | live
-    'store_id'       => env('SSLCOMMERZ_STORE_ID'),
+    'mode' => env('SSLCOMMERZ_MODE', 'sandbox'), // sandbox | live
+    'store_id' => env('SSLCOMMERZ_STORE_ID'),
     'store_password' => env('SSLCOMMERZ_STORE_PASSWORD'),
 
     'api_domain' => env('SSLCOMMERZ_MODE', 'sandbox') === 'live'
@@ -26,8 +26,8 @@ return [
         : 'https://sandbox.sslcommerz.com',
 
     'connect_from_localhost' => env('SSLCOMMERZ_LOCALHOST', true),
-    'verify_hash'            => env('SSLCOMMERZ_VERIFY_HASH', true),
-    'currency'               => env('SSLCOMMERZ_CURRENCY', 'BDT'),
+    'verify_hash' => env('SSLCOMMERZ_VERIFY_HASH', true),
+    'currency' => env('SSLCOMMERZ_CURRENCY', 'BDT'),
 
     // Where the buyer lands after checkout (Next.js frontend).
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),

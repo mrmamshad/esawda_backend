@@ -12,7 +12,6 @@ use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -61,27 +60,27 @@ class MessageController extends Controller
         $users = User::whereIn('id', $counterpartIds)->get()->keyBy('id');
 
         $threads = $grouped->map(function (Collection $msgs, string $key) use ($me, $users) {
-            $last  = $msgs->first();
+            $last = $msgs->first();
             $other = (int) $this->otherId($key, $me);
-            $u     = $users->get($other);
-            $unread = $msgs->filter(fn ($m) => (int) $m->to_id === $me && ! $this->bool($m->seen))->count();
+            $u = $users->get($other);
+            $unread = $msgs->filter(fn ($m) => (int) $m->to_id === $me && !$this->bool($m->seen))->count();
 
             return (object) [
-                'id'                     => $key,
-                'counterpart_id'         => $other,
-                'counterpart_username'   => $u?->username,
-                'counterpart_name'       => $u?->name,
-                'counterpart_phone'      => $u?->phone,
-                'counterpart_image'      => $u?->image,
-                'counterpart_online'     => $u?->online,
-                'last_body'              => $last->message_content,
-                'last_type'              => $last->message_type,
-                'last_mine'              => (int) $last->from_id === $me,
-                'last_sent_at'           => $last->message_date instanceof \DateTimeInterface
+                'id' => $key,
+                'counterpart_id' => $other,
+                'counterpart_username' => $u?->username,
+                'counterpart_name' => $u?->name,
+                'counterpart_phone' => $u?->phone,
+                'counterpart_image' => $u?->image,
+                'counterpart_online' => $u?->online,
+                'last_body' => $last->message_content,
+                'last_type' => $last->message_type,
+                'last_mine' => (int) $last->from_id === $me,
+                'last_sent_at' => $last->message_date instanceof \DateTimeInterface
                                             ? $last->message_date->format('c')
                                             : $last->message_date,
-                'unread_count'           => $unread,
-                'post_id'                => $last->post_id,
+                'unread_count' => $unread,
+                'post_id' => $last->post_id,
             ];
         })->values();
 
@@ -114,7 +113,7 @@ class MessageController extends Controller
 
     public function send(SendMessageRequest $request)
     {
-        $me   = $request->user();
+        $me = $request->user();
         $data = $request->validated();
 
         if ((int) $data['to'] === (int) $me->id) {
@@ -126,32 +125,33 @@ class MessageController extends Controller
         // Image message: persist the upload and reference it by stored path;
         // the resource turns it into an absolute URL. Text keeps its body.
         $content = $data['body'] ?? '';
-        $type    = 'text';
+        $type = 'text';
         if ($request->hasFile('image')) {
-            $file  = $request->file('image');
-            $name  = Str::random(32) . '.' . $file->extension();
-            $path  = $file->storeAs('messages', $name, 'public');
+            $file = $request->file('image');
+            $name = Str::random(32).'.'.$file->extension();
+            $path = $file->storeAs('messages', $name, 'public');
             $content = $path;
-            $type    = 'image';
+            $type = 'image';
         }
 
         $msg = Message::create([
-            'from_id'         => (string) $me->id,
-            'to_id'           => (string) $to->id,
-            'from_uname'      => $me->username,
-            'to_uname'        => $to->username,
+            'from_id' => (string) $me->id,
+            'to_id' => (string) $to->id,
+            'from_uname' => $me->username,
+            'to_uname' => $to->username,
             'message_content' => $content,
-            'message_date'    => now(),
-            'message_type'    => $type,
-            'post_id'         => $data['post_id'] ?? 0,
-            'recd'            => 0,
-            'seen'            => '0',
+            'message_date' => now(),
+            'message_type' => $type,
+            'post_id' => $data['post_id'] ?? 0,
+            'recd' => 0,
+            'seen' => '0',
         ]);
 
         // Broadcast message to both sender and receiver via WebSocket
         broadcast(new MessageSent($msg))->toOthers();
 
         $msg->load('sender');
+
         return $this->created(new MessageResource($msg));
     }
 
@@ -161,9 +161,9 @@ class MessageController extends Controller
         User::findOrFail($userId);
 
         $count = Message::where('to_id', $me)
-                        ->where('from_id', $userId)
-                        ->where('seen', '0')
-                        ->update(['seen' => '1']);
+            ->where('from_id', $userId)
+            ->where('seen', '0')
+            ->update(['seen' => '1']);
 
         return $this->ok(['marked_read' => $count]);
     }
@@ -171,8 +171,9 @@ class MessageController extends Controller
     public function unreadCount(Request $request)
     {
         $count = Message::where('to_id', (int) $request->user()->id)
-                        ->where('seen', '0')
-                        ->count();
+            ->where('seen', '0')
+            ->count();
+
         return $this->ok(['unread_count' => (int) $count]);
     }
 
@@ -182,12 +183,14 @@ class MessageController extends Controller
     {
         $a = (int) $m->from_id;
         $b = (int) $m->to_id;
+
         return $a < $b ? "{$a}-{$b}" : "{$b}-{$a}";
     }
 
     private function otherId(string $key, int $me): int
     {
         [$a, $b] = array_map('intval', explode('-', $key));
+
         return $a === $me ? $b : $a;
     }
 

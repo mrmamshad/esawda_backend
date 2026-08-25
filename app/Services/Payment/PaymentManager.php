@@ -24,7 +24,7 @@ class PaymentManager
      * under App\Services\Payment\Gateways\* and can be re-enabled here.
      */
     protected array $registry = [
-        'sslcommerz'    => Gateways\SSLCommerzGateway::class,
+        'sslcommerz' => Gateways\SSLCommerzGateway::class,
 
         // ---- Deprecated (kept for reference) ---------------------------------
         // '2checkout'     => Gateways\TwoCheckoutGateway::class,
@@ -46,9 +46,10 @@ class PaymentManager
 
     public function get(string $slug): PaymentGatewayInterface
     {
-        if (! isset($this->registry[$slug])) {
+        if (!isset($this->registry[$slug])) {
             throw new \InvalidArgumentException("Unknown payment gateway: $slug");
         }
+
         return app($this->registry[$slug]);
     }
 
@@ -59,6 +60,7 @@ class PaymentManager
         foreach ($this->registry as $slug => $class) {
             $out[$slug] = app($class)->label();
         }
+
         return $out;
     }
 }

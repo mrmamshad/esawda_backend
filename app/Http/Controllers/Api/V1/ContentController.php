@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\ContactMessageRequest;
 use App\Http\Resources\V1\BlogResource;
 use App\Http\Resources\V1\FaqResource;
 use App\Http\Resources\V1\PageResource;
 use App\Http\Resources\V1\PlanResource;
 use App\Http\Resources\V1\TestimonialResource;
-use App\Http\Requests\V1\ContactMessageRequest;
 use App\Models\Blog;
+use App\Models\BlogCategory;
 use App\Models\Faq;
 use App\Models\Page;
 use App\Models\Plan;
@@ -36,14 +37,18 @@ class ContentController extends Controller
     public function pages(Request $request)
     {
         $q = Page::query()->where('active', 1);
-        if ($lang = $request->query('lang')) $q->where('translation_lang', $lang);
+        if ($lang = $request->query('lang')) {
+            $q->where('translation_lang', $lang);
+        }
         $q->orderBy('name');
+
         return $this->ok(PageResource::collection($q->paginate(min(50, (int) $request->query('per_page', 20)))));
     }
 
     public function page(string $slug)
     {
         $page = Page::where('slug', $slug)->where('active', 1)->firstOrFail();
+
         return $this->ok(new PageResource($page));
     }
 
@@ -52,8 +57,11 @@ class ContentController extends Controller
     public function faqs(Request $request)
     {
         $q = Faq::query()->where('active', 1);
-        if ($lang = $request->query('lang')) $q->where('translation_lang', $lang);
+        if ($lang = $request->query('lang')) {
+            $q->where('translation_lang', $lang);
+        }
         $q->orderBy('faq_weight')->orderBy('faq_id');
+
         return $this->ok(FaqResource::collection($q->get()));
     }
 
@@ -62,6 +70,7 @@ class ContentController extends Controller
     public function testimonials(Request $request)
     {
         $limit = max(1, min(50, (int) $request->query('limit', 12)));
+
         return $this->ok(TestimonialResource::collection(Testimonial::query()->orderByDesc('id')->limit($limit)->get()));
     }
 
@@ -70,6 +79,7 @@ class ContentController extends Controller
     public function plans(Request $request)
     {
         $q = Plan::query()->where('status', 1)->orderBy('monthly_price');
+
         return $this->ok(PlanResource::collection($q->get()));
     }
 
@@ -81,7 +91,7 @@ class ContentController extends Controller
 
         if ($needle = trim((string) $request->query('q', ''))) {
             $q->where(fn ($s) => $s->where('title', 'like', "%{$needle}%")
-                                   ->orWhere('description', 'like', "%{$needle}%"));
+                ->orWhere('description', 'like', "%{$needle}%"));
         }
         if ($tag = $request->query('tag')) {
             $q->where('tags', 'like', "%{$tag}%");
@@ -94,6 +104,7 @@ class ContentController extends Controller
         }
 
         $perPage = max(1, min(30, (int) $request->query('per_page', 9)));
+
         return $this->ok(BlogResource::collection($q->paginate($perPage)));
     }
 
@@ -101,11 +112,12 @@ class ContentController extends Controller
 
     public function blogCategories(Request $request)
     {
-        $rows = \App\Models\BlogCategory::query()->orderBy('title')->get();
+        $rows = BlogCategory::query()->orderBy('title')->get();
+
         return $this->ok($rows->map(fn ($c) => [
-            'id'    => (int) $c->id,
+            'id' => (int) $c->id,
             'title' => $c->title,
-            'slug'  => $c->slug,
+            'slug' => $c->slug,
         ])->values());
     }
 
@@ -114,6 +126,7 @@ class ContentController extends Controller
         $id = (int) explode('-', $idSlug, 2)[0];
         abort_if($id <= 0, 404);
         $blog = Blog::with(['author', 'categories'])->where('id', $id)->where('status', 'publish')->firstOrFail();
+
         return $this->ok(new BlogResource($blog));
     }
 
@@ -121,7 +134,7 @@ class ContentController extends Controller
 
     public function contact(ContactMessageRequest $request)
     {
-        $data  = $request->validated();
+        $data = $request->validated();
 
         app(MailService::class)->contactMessageToAdmin($data);
 

@@ -2,10 +2,10 @@
 
 namespace App\Http\Concerns;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Resources\Json\ResourceCollection;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
  * Uniform response envelope: { data, meta, links? } for success and
@@ -40,7 +40,7 @@ trait ApiResponses
      */
     protected function withAuthCookie(JsonResponse $response, string $token): JsonResponse
     {
-        $request  = request();
+        $request = request();
         $isSecure = $request->isSecure() || $request->headers->get('X-Forwarded-Proto') === 'https';
 
         return $response->withCookie(cookie(
@@ -74,7 +74,10 @@ trait ApiResponses
     protected function error(string $code, string $message, int $status = 400, array $fields = []): JsonResponse
     {
         $body = ['error' => ['code' => $code, 'message' => $message]];
-        if ($fields) $body['error']['fields'] = $fields;
+        if ($fields) {
+            $body['error']['fields'] = $fields;
+        }
+
         return response()->json($body, $status);
     }
 
@@ -90,22 +93,23 @@ trait ApiResponses
         if ($data instanceof ResourceCollection) {
             $data = $data->toResponse(request())->getData(true); // already { data, meta, links }
             $data['meta'] = array_merge($data['meta'] ?? [], $extraMeta);
+
             return $data;
         }
         if ($data instanceof LengthAwarePaginator) {
             return [
-                'data'  => $data->items(),
-                'meta'  => array_merge([
+                'data' => $data->items(),
+                'meta' => array_merge([
                     'current_page' => $data->currentPage(),
-                    'per_page'     => $data->perPage(),
-                    'total'        => $data->total(),
-                    'last_page'    => $data->lastPage(),
+                    'per_page' => $data->perPage(),
+                    'total' => $data->total(),
+                    'last_page' => $data->lastPage(),
                 ], $extraMeta),
                 'links' => [
                     'first' => $data->url(1),
-                    'last'  => $data->url($data->lastPage()),
-                    'prev'  => $data->previousPageUrl(),
-                    'next'  => $data->nextPageUrl(),
+                    'last' => $data->url($data->lastPage()),
+                    'prev' => $data->previousPageUrl(),
+                    'next' => $data->nextPageUrl(),
                 ],
             ];
         }
@@ -113,7 +117,10 @@ trait ApiResponses
             $data = $data->resolve();
         }
         $out = ['data' => $data];
-        if ($extraMeta) $out['meta'] = $extraMeta;
+        if ($extraMeta) {
+            $out['meta'] = $extraMeta;
+        }
+
         return $out;
     }
 }

@@ -2,22 +2,25 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\PostResource\Pages\CreatePost;
+use App\Filament\Resources\PostResource\Pages\EditPost;
+use App\Filament\Resources\PostResource\Pages\ListPosts;
 use App\Models\Post;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use App\Filament\Resources\PostResource\Pages\ListPosts;
-use App\Filament\Resources\PostResource\Pages\CreatePost;
-use App\Filament\Resources\PostResource\Pages\EditPost;
 
 /** Legacy admin: `admin/posts.php`. */
 class PostResource extends Resource
 {
     protected static ?string $model = Post::class;
-    protected static ?string $navigationIcon  = 'heroicon-o-rectangle-stack';
+
+    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+
     protected static ?string $navigationGroup = 'Ads';
+
     protected static ?string $label = 'Ad';
 
     public static function form(Form $form): Form
@@ -63,9 +66,9 @@ class PostResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListPosts::route('/'),
+            'index' => ListPosts::route('/'),
             'create' => CreatePost::route('/create'),
-            'edit'   => EditPost::route('/{record}/edit'),
+            'edit' => EditPost::route('/{record}/edit'),
         ];
     }
 }

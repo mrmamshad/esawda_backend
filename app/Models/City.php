@@ -7,7 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class City extends Model
 {
     protected $table = 'cities';
+
     protected $guarded = [];
 
-    public function country() { return $this->belongsTo(Country::class, 'country_code', 'code'); }
+    public function country()
+    {
+        return $this->belongsTo(Country::class, 'country_code', 'code');
+    }
 }

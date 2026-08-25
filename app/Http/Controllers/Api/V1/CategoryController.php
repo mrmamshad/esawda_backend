@@ -4,9 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\CategoryResource;
-use App\Http\Resources\V1\SubCategoryResource;
 use App\Models\Category;
-use App\Models\SubCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -23,13 +21,13 @@ class CategoryController extends Controller
     public function index(Request $request)
     {
         $withCounts = filter_var($request->query('with_counts', 'true'), FILTER_VALIDATE_BOOL);
-        $withSubs   = filter_var($request->query('with_subs',   'true'), FILTER_VALIDATE_BOOL);
+        $withSubs = filter_var($request->query('with_subs', 'true'), FILTER_VALIDATE_BOOL);
 
         // Read-heavy public taxonomy. The per-row correlated COUNT subqueries
         // become a handful of grouped COUNT()s, and the whole result is cached
         // for 5 minutes via the configured CACHE_STORE (file in dev, redis in
         // prod) — not a DB hit per request.
-        $key = 'categories.' . (int) $withCounts . '.' . (int) $withSubs;
+        $key = 'categories.'.(int) $withCounts.'.'.(int) $withSubs;
 
         return Cache::remember($key, 300, function () use ($withCounts, $withSubs) {
             $query = Category::orderBy('cat_order');
@@ -39,7 +37,9 @@ class CategoryController extends Controller
                     $q->orderBy('cat_order');
                     // group-by COUNT per category, aliased to the ads_count the
                     // resource expects (replaces the per-row correlated subquery)
-                    if ($withCounts) $q->withCount(['posts as ads_count' => fn ($a) => $a->active()]);
+                    if ($withCounts) {
+                        $q->withCount(['posts as ads_count' => fn ($a) => $a->active()]);
+                    }
                 }]);
             }
 

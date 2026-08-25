@@ -42,8 +42,8 @@ class SellerController extends Controller
                 ->selectRaw("COUNT(*) as total, SUM(status = 'active' AND hide = '0') as active, SUM(status = 'expire') as sold")
                 ->first();
 
-            $prefix     = DB::getTablePrefix();
-            $reviewsRef = $prefix . 'reviews';
+            $prefix = DB::getTablePrefix();
+            $reviewsRef = $prefix.'reviews';
 
             $ratingRow = DB::table('reviews')
                 ->join('product', 'reviews.productID', '=', 'product.id')
@@ -53,18 +53,18 @@ class SellerController extends Controller
                 ->first();
 
             return [
-                'ads_total'    => (int) ($statusCounts->total ?? 0),
-                'ads_active'   => (int) ($statusCounts->active ?? 0),
-                'ads_sold'     => (int) ($statusCounts->sold ?? 0),
-                'avg_rating'   => $ratingRow?->avg_rating,
+                'ads_total' => (int) ($statusCounts->total ?? 0),
+                'ads_active' => (int) ($statusCounts->active ?? 0),
+                'ads_sold' => (int) ($statusCounts->sold ?? 0),
+                'avg_rating' => $ratingRow?->avg_rating,
                 'reviews_count' => (int) ($ratingRow?->reviews_count ?? 0),
             ];
         });
 
-        $user->ads_total     = $stats['ads_total'];
-        $user->ads_active    = $stats['ads_active'];
-        $user->ads_sold      = $stats['ads_sold'];
-        $user->avg_rating    = $stats['avg_rating'];
+        $user->ads_total = $stats['ads_total'];
+        $user->ads_active = $stats['ads_active'];
+        $user->ads_sold = $stats['ads_sold'];
+        $user->avg_rating = $stats['avg_rating'];
         $user->reviews_count = $stats['reviews_count'];
 
         return $this->ok(new SellerResource($user));
@@ -75,28 +75,28 @@ class SellerController extends Controller
         $user = User::where('username', $username)->orWhere('id', is_numeric($username) ? (int) $username : -1)->firstOrFail();
 
         $q = Post::query()->active()->where('user_id', $user->id)
-                 ->with(['category', 'subCategory']);
+            ->with(['category', 'subCategory']);
 
         $this->applyFilters(
             $q, $request,
             [
-                'category'     => 'category',
+                'category' => 'category',
                 'sub_category' => 'sub_category',
-                'city'         => 'city',
-                'country'      => 'country',
-                'price'        => 'price',
-                'featured'     => 'featured',
+                'city' => 'city',
+                'country' => 'country',
+                'price' => 'price',
+                'featured' => 'featured',
             ],
             [
                 'created_at' => 'created_at',
-                'price'      => 'price',
-                'featured'   => 'featured',
-                'view'       => 'view',
+                'price' => 'price',
+                'featured' => 'featured',
+                'view' => 'view',
             ],
             ['product_name', 'description', 'tag']
         );
 
-        if (! $request->query('sort')) {
+        if (!$request->query('sort')) {
             $q->orderByDesc('featured')->orderByDesc('id');
         }
 

@@ -11,7 +11,9 @@ class WatermarkService
 {
     public function apply(string $targetPath, string $watermarkPath, string $outputPath): bool
     {
-        if (! extension_loaded('gd')) return false;
+        if (!extension_loaded('gd')) {
+            return false;
+        }
 
         $wm = imagecreatefrompng($watermarkPath);
         imagealphablending($wm, false);
@@ -22,10 +24,12 @@ class WatermarkService
 
         $img = match ($info['mime']) {
             'image/jpeg' => imagecreatefromjpeg($targetPath),
-            'image/png'  => imagecreatefrompng($targetPath),
+            'image/png' => imagecreatefrompng($targetPath),
             default => null,
         };
-        if (! $img) return false;
+        if (!$img) {
+            return false;
+        }
 
         $wmW = imagesx($wm);
         $wmH = imagesy($wm);
@@ -34,10 +38,11 @@ class WatermarkService
 
         $ok = match ($info['mime']) {
             'image/jpeg' => imagejpeg($img, $outputPath, 100),
-            'image/png'  => imagepng($img, $outputPath, 5),
+            'image/png' => imagepng($img, $outputPath, 5),
         };
         imagedestroy($img);
         imagedestroy($wm);
+
         return (bool) $ok;
     }
 }

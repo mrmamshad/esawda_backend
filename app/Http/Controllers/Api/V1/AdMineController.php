@@ -8,11 +8,13 @@ use App\Http\Requests\V1\StoreAdRequest;
 use App\Http\Requests\V1\UpdateAdRequest;
 use App\Http\Resources\V1\AdDetailResource;
 use App\Http\Resources\V1\AdResource;
+use App\Jobs\RevalidateFrontendJob;
+use App\Models\Favourite;
 use App\Models\Post;
+use App\Models\User;
 use App\Services\AdMutationService;
 use App\Services\AdStatsService;
 use App\Services\Mail\MailService;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -38,12 +40,14 @@ class AdMineController extends Controller
 
     public function store(StoreAdRequest $request)
     {
-        $post = DB::transaction(function () use ($request) {
+        $isBundle = !empty($request->input('bundle_items'));
+
+        $post = DB::transaction(function () use ($request, $isBundle) {
             $user = User::query()->lockForUpdate()->findOrFail($request->user()->id);
 
-            // The row lock makes quota consumption safe when multiple listing
-            // requests arrive at the same time.
-            if (! $this->canPostFree($user)) {
+            // Bundles group existing active products, so they are free to create
+            // and do not consume subscription listing slots.
+            if (!$isBundle && !$this->canPostFree($user)) {
                 return null;
             }
 
@@ -53,15 +57,17 @@ class AdMineController extends Controller
                 (array) $request->file('images', [])
             );
 
-            $user->forceFill([
-                'ads_remaining' => (int) $user->ads_remaining - 1,
-                'updated_at' => now(),
-            ])->save();
+            if (!$isBundle) {
+                $user->forceFill([
+                    'ads_remaining' => (int) $user->ads_remaining - 1,
+                    'updated_at' => now(),
+                ])->save();
+            }
 
             return $post;
         });
 
-        if (! $post) {
+        if (!$post) {
             return $this->error(
                 'SUBSCRIPTION_REQUIRED',
                 'No subscription listing slots remain. Choose pay per listing or renew your plan.',
@@ -81,7 +87,8 @@ class AdMineController extends Controller
      */
     private function canPostFree($user): bool
     {
-        $hasPlan = ! empty($user->plan_expires_at) && $user->plan_expires_at->isFuture();
+        $hasPlan = !empty($user->plan_expires_at) && $user->plan_expires_at->isFuture();
+
         return $hasPlan && (int) $user->ads_remaining > 0;
     }
 
@@ -91,6 +98,7 @@ class AdMineController extends Controller
         $this->authorize('update', $post);
         $post = $this->svc->update($post, $request->validated(), (array) $request->file('images', []));
         $this->mail->pendingAdToAdmin($post->load('user'));
+
         return $this->ok(new AdDetailResource(
             $this->attachBundleItems($post->load(['category', 'subCategory', 'user', 'customData']))
         ));
@@ -101,15 +109,17 @@ class AdMineController extends Controller
         $post = Post::findOrFail($id);
         $this->authorize('delete', $post);
         $post->forceFill(['status' => 'expire', 'hide' => '1', 'updated_at' => now()])->save();
+
         return $this->ok(['message' => 'Ad removed.']);
     }
 
     public function addImages(int $id, Request $request)
     {
-        $request->validate(['images' => ['required','array','max:8'], 'images.*' => ['image','mimes:jpg,jpeg,png,webp','max:5120']]);
+        $request->validate(['images' => ['required', 'array', 'max:8'], 'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120']]);
         $post = Post::findOrFail($id);
         $this->authorize('update', $post);
         $this->svc->update($post, [], (array) $request->file('images', []));
+
         return $this->ok(new AdDetailResource($post->fresh()));
     }
 
@@ -118,6 +128,7 @@ class AdMineController extends Controller
         $post = Post::findOrFail($id);
         $this->authorize('update', $post);
         $this->svc->deleteImage($post, basename($filename));
+
         return $this->noContent();
     }
 
@@ -126,17 +137,24 @@ class AdMineController extends Controller
         $post = Post::findOrFail($id);
         $this->authorize('update', $post);
         match ($action) {
-            'hide'     => $post->forceFill(['hide' => '1', 'updated_at' => now()])->save(),
-            'unhide'   => $post->forceFill(['hide' => '0', 'updated_at' => now()])->save(),
+            'hide' => $post->forceFill(['hide' => '1', 'updated_at' => now()])->save(),
+            'unhide' => $post->forceFill(['hide' => '0', 'updated_at' => now()])->save(),
             'resubmit' => $post->forceFill(['status' => 'pending', 'hide' => '0', 'updated_at' => now(),
-                                            'duration_days' => $days = (int) ($request->input('duration_days', 30) ?? 30),
-                                            'expire_date' => now()->addDays($days)->timestamp])->save(),
+                'duration_days' => $days = (int) ($request->input('duration_days', 30) ?? 30),
+                'expire_date' => now()->addDays($days)->timestamp])->save(),
             'sold-out' => $post->forceFill(['status' => 'sold_out',  'updated_at' => now()])->save(),
-            'restock'  => $post->forceFill(['status' => 'active',    'updated_at' => now()])->save(),
-            'remove'   => $post->forceFill(['status' => 'removed', 'hide' => '1', 'updated_at' => now()])->save(),
-            'publish'  => $post->forceFill(['status' => 'pending', 'updated_at' => now()])->save(),
-            default    => abort(422, 'Unknown action.'),
+            'restock' => $post->forceFill(['status' => 'active',    'updated_at' => now()])->save(),
+            'remove' => $post->forceFill(['status' => 'removed', 'hide' => '1', 'updated_at' => now()])->save(),
+            'publish' => $post->forceFill(['status' => 'pending', 'updated_at' => now()])->save(),
+            default => abort(422, 'Unknown action.'),
         };
+
+        // Revalidate the frontend homepage so visibility changes (hide,
+        // unhide, restock, sold-out, remove) reflect immediately.
+        if (in_array($action, ['hide', 'unhide', 'restock', 'sold-out', 'remove'], true)) {
+            RevalidateFrontendJob::dispatch();
+        }
+
         return $this->ok(new AdDetailResource($post->fresh()));
     }
 
@@ -146,22 +164,25 @@ class AdMineController extends Controller
 
         // ?status=all|active|pending|sold_out|removed|draft|expire|hidden
         match ((string) $request->query('status', '')) {
-            'active'   => $q->where('status', 'active')->where('hide', '0'),
-            'pending'  => $q->where('status', 'pending'),
-            'expire'   => $q->where('status', 'expire'),
+            'active' => $q->where('status', 'active')->where('hide', '0'),
+            'pending' => $q->where('status', 'pending'),
+            'expire' => $q->where('status', 'expire'),
             'sold_out' => $q->where('status', 'sold_out'),
-            'removed'  => $q->where('status', 'removed'),
-            'draft'    => $q->where('status', 'draft'),
-            'hidden'   => $q->where('hide',   '1'),
-            default    => null,
+            'removed' => $q->where('status', 'removed'),
+            'draft' => $q->where('status', 'draft'),
+            'hidden' => $q->where('hide', '1'),
+            default => null,
         };
 
         // ?condition=new|used
-        if ($c = $request->query('condition')) $q->where('condition', $c);
+        if ($c = $request->query('condition')) {
+            $q->where('condition', $c);
+        }
 
         $q->with(['category', 'subCategory'])->orderByDesc('id');
         $rows = $q->paginate($this->perPage($request, 12));
         $rows->getCollection()->map(fn (Post $p) => $this->attachBundleItems($p));
+
         return $this->ok(AdResource::collection($rows));
     }
 
@@ -171,6 +192,7 @@ class AdMineController extends Controller
         if ($post->bundle_items) {
             $post->setRelation('bundleItems', Post::whereIn('id', $post->bundle_items)->get());
         }
+
         return $post;
     }
 
@@ -193,7 +215,7 @@ class AdMineController extends Controller
         $userId = $request->user()->id;
         $mineIds = Post::where('user_id', $userId)->pluck('id');
 
-        $rows = \App\Models\Favourite::with(['user:id,username,name,image', 'post:id,product_name,slug,price,screen_shot'])
+        $rows = Favourite::with(['user:id,username,name,image', 'post:id,product_name,slug,price,screen_shot'])
             ->whereIn('product_id', $mineIds)
             ->orderByDesc('id')
             ->paginate($this->perPage($request, 20));

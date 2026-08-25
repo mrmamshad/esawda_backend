@@ -16,13 +16,13 @@ class UserService
 {
     public function register(array $data): User
     {
-        // TODO(migration): port validation + email-confirm flow from php/signup.php
         $data['password_hash'] = Hash::make($data['password'] ?? '');
-        $data['created_at']    = now();
-        $data['status']        = '1';
-        $data['group_id']      = $data['group_id'] ?? 'free';
+        $data['created_at'] = now();
+        $data['status'] = '1';
+        $data['group_id'] = $data['group_id'] ?? 'free';
 
         unset($data['password']);
+
         // forceCreate: trusted internal registration — status/group_id are
         // set here deliberately, not from caller-controlled mass assignment.
         return User::forceCreate($data);

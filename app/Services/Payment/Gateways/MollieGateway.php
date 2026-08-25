@@ -8,9 +8,13 @@ namespace App\Services\Payment\Gateways;
  */
 class MollieGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'mollie'; }
-    public function label(): string { return 'Mollie'; }
+    public function slug(): string
+    {
+        return 'mollie';
+    }
 
-    // TODO(migration): implement gateway-specific SDK flow from
-    // includes/payments/mollie/*.php
+    public function label(): string
+    {
+        return 'Mollie';
+    }
 }

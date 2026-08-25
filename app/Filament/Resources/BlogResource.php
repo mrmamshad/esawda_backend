@@ -2,21 +2,23 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\BlogResource\Pages\CreateBlog;
+use App\Filament\Resources\BlogResource\Pages\EditBlog;
+use App\Filament\Resources\BlogResource\Pages\ListBlogs;
 use App\Models\Blog;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use App\Filament\Resources\BlogResource\Pages\ListBlogs;
-use App\Filament\Resources\BlogResource\Pages\CreateBlog;
-use App\Filament\Resources\BlogResource\Pages\EditBlog;
 
 /** Legacy admin: `admin/blog.php`. */
 class BlogResource extends Resource
 {
     protected static ?string $model = Blog::class;
-    protected static ?string $navigationIcon  = 'heroicon-o-newspaper';
+
+    protected static ?string $navigationIcon = 'heroicon-o-newspaper';
+
     protected static ?string $navigationGroup = 'Content';
 
     public static function form(Form $form): Form
@@ -37,15 +39,15 @@ class BlogResource extends Resource
             Tables\Columns\BadgeColumn::make('status')->colors(['success' => 'publish', 'warning' => 'pending']),
             Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable(),
         ])->defaultSort('id', 'desc')
-          ->actions([Tables\Actions\EditAction::make(), Tables\Actions\DeleteAction::make()]);
+            ->actions([Tables\Actions\EditAction::make(), Tables\Actions\DeleteAction::make()]);
     }
 
     public static function getPages(): array
     {
         return [
-            'index'  => ListBlogs::route('/'),
+            'index' => ListBlogs::route('/'),
             'create' => CreateBlog::route('/create'),
-            'edit'   => EditBlog::route('/{record}/edit'),
+            'edit' => EditBlog::route('/{record}/edit'),
         ];
     }
 }

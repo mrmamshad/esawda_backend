@@ -21,14 +21,15 @@ class CategoryAdminController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'cat_name'  => ['required', 'string', 'max:100'],
-            'slug'      => ['nullable', 'string', 'max:100'],
-            'icon'      => ['nullable', 'string', 'max:100'],
-            'picture'   => ['nullable', 'string'],
+            'cat_name' => ['required', 'string', 'max:100'],
+            'slug' => ['nullable', 'string', 'max:100'],
+            'icon' => ['nullable', 'string', 'max:100'],
+            'picture' => ['nullable', 'string'],
             'cat_order' => ['nullable', 'integer'],
         ]);
         $data['slug'] = $data['slug'] ?? Str::slug($data['cat_name']);
         $data['icon'] = $data['icon'] ?? 'fa-usd';
+
         return $this->created(Category::create($data));
     }
 
@@ -41,19 +42,21 @@ class CategoryAdminController extends Controller
     {
         $c = Category::findOrFail($id);
         $data = $request->validate([
-            'cat_name'  => ['sometimes', 'string', 'max:100'],
-            'slug'      => ['sometimes', 'nullable', 'string', 'max:100'],
-            'icon'      => ['sometimes', 'nullable', 'string', 'max:100'],
-            'picture'   => ['sometimes', 'nullable', 'string'],
+            'cat_name' => ['sometimes', 'string', 'max:100'],
+            'slug' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'icon' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'picture' => ['sometimes', 'nullable', 'string'],
             'cat_order' => ['sometimes', 'integer'],
         ]);
         $c->fill($data)->save();
+
         return $this->ok($c);
     }
 
     public function destroy(int $id)
     {
         Category::findOrFail($id)->delete();
+
         return $this->ok(['message' => 'Category deleted.']);
     }
 }

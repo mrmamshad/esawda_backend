@@ -14,40 +14,41 @@ class SellerResource extends BaseResource
 {
     public function toArray($request): array
     {
-        $avatarBase = rtrim(config('app.url'), '/') . '/storage/profile/';
+        $avatarBase = rtrim(config('app.url'), '/').'/storage/profile/';
+
         return [
-            'id'          => (int) $this->id,
-            'username'    => $this->username,
-            'name'        => $this->name ?: $this->username,
-            'tagline'     => $this->tagline,
+            'id' => (int) $this->id,
+            'username' => $this->username,
+            'name' => $this->name ?: $this->username,
+            'tagline' => $this->tagline,
             'description' => $this->description,
-            'avatar_url'  => $avatarBase . ($this->image ?: 'default_user.png'),
-            'cover_url'   => $this->cover ? $avatarBase . $this->cover : null,
-            'online'      => $this->bool($this->online),
-            'phone'       => $this->bool($this->hide_phone) ? null : $this->phone,
-            'whatsapp'    => $this->bool($this->hide_phone) ? null : ($this->whatsapp ?? $this->phone),
-            'website'     => $this->website,
-            'location'    => [
-                'city'    => $this->city,
+            'avatar_url' => $avatarBase.($this->image ?: 'default_user.png'),
+            'cover_url' => $this->cover ? $avatarBase.$this->cover : null,
+            'online' => $this->bool($this->online),
+            'phone' => $this->bool($this->hide_phone) ? null : $this->phone,
+            'whatsapp' => $this->bool($this->hide_phone) ? null : ($this->whatsapp ?? $this->phone),
+            'website' => $this->website,
+            'location' => [
+                'city' => $this->city,
                 'country' => $this->country,
                 'address' => $this->address,
             ],
-            'socials'     => [
-                'facebook'  => $this->facebook,
-                'twitter'   => $this->twitter,
+            'socials' => [
+                'facebook' => $this->facebook,
+                'twitter' => $this->twitter,
                 'instagram' => $this->instagram,
-                'linkedin'  => $this->linkedin,
-                'youtube'   => $this->youtube,
+                'linkedin' => $this->linkedin,
+                'youtube' => $this->youtube,
                 'pinterest' => $this->pinterest ?? null,
             ],
-            'stats'       => [
+            'stats' => [
                 'total_listings' => (int) ($this->ads_total ?? 0),
-                'sold'           => (int) ($this->ads_sold  ?? 0),
-                'active'         => (int) ($this->ads_active ?? 0),
-                'avg_rating'     => $this->avg_rating !== null ? round((float) $this->avg_rating, 2) : null,
-                'reviews_count'  => (int) ($this->reviews_count ?? 0),
+                'sold' => (int) ($this->ads_sold ?? 0),
+                'active' => (int) ($this->ads_active ?? 0),
+                'avg_rating' => $this->avg_rating !== null ? round((float) $this->avg_rating, 2) : null,
+                'reviews_count' => (int) ($this->reviews_count ?? 0),
             ],
-            'member_since'=> optional($this->created_at)->toIso8601String(),
+            'member_since' => optional($this->created_at)->toIso8601String(),
             'last_active' => optional($this->lastactive)->toIso8601String(),
         ];
     }

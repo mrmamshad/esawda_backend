@@ -35,7 +35,7 @@ class Transactional extends Mailable
     {
         return new Content(
             view: $this->viewName,
-            text: $this->viewName . '-text',
+            text: $this->viewName.'-text',
             with: $this->data,
         );
     }

@@ -31,21 +31,27 @@ class FilterSchemaController extends Controller
 {
     public function show(Request $request)
     {
-        $catId    = $this->resolveCategoryId($request->query('category'));
+        $catId = $this->resolveCategoryId($request->query('category'));
         $subCatId = $this->resolveSubCategoryId($request->query('sub_category'));
 
         // Custom-field schema is static config; cache the resolved field list
         // by the (category, sub_category) scope. Resolved ids are null-safe.
-        $cacheKey = 'filter-schema.' . ($catId ?? 'all') . '.' . ($subCatId ?? 'all');
+        $cacheKey = 'filter-schema.'.($catId ?? 'all').'.'.($subCatId ?? 'all');
         $fields = Cache::remember($cacheKey, 300, function () use ($catId, $subCatId) {
             return CustomField::query()
                 ->orderBy('custom_order')
                 ->get()
                 ->filter(function (CustomField $f) use ($catId, $subCatId) {
-                    if ($this->bool($f->custom_anycat)) return true;
+                    if ($this->bool($f->custom_anycat)) {
+                        return true;
+                    }
 
-                    if ($catId !== null && $this->pipeContains($f->custom_catid, $catId)) return true;
-                    if ($subCatId !== null && $this->pipeContains($f->custom_subcatid, $subCatId)) return true;
+                    if ($catId !== null && $this->pipeContains($f->custom_catid, $catId)) {
+                        return true;
+                    }
+                    if ($subCatId !== null && $this->pipeContains($f->custom_subcatid, $subCatId)) {
+                        return true;
+                    }
 
                     return false;
                 })
@@ -53,30 +59,43 @@ class FilterSchemaController extends Controller
         });
 
         return $this->ok([
-            'category'     => $catId,
+            'category' => $catId,
             'sub_category' => $subCatId,
-            'fields'       => FilterFieldResource::collection($fields)->resolve(),
+            'fields' => FilterFieldResource::collection($fields)->resolve(),
         ]);
     }
 
     private function resolveCategoryId(mixed $raw): ?int
     {
-        if ($raw === null || $raw === '') return null;
-        if (is_numeric($raw)) return (int) $raw;
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+        if (is_numeric($raw)) {
+            return (int) $raw;
+        }
+
         return Category::where('slug', $raw)->value('cat_id');
     }
 
     private function resolveSubCategoryId(mixed $raw): ?int
     {
-        if ($raw === null || $raw === '') return null;
-        if (is_numeric($raw)) return (int) $raw;
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+        if (is_numeric($raw)) {
+            return (int) $raw;
+        }
+
         return SubCategory::where('slug', $raw)->value('sub_cat_id');
     }
 
     private function pipeContains(?string $raw, int $needle): bool
     {
-        if (empty($raw)) return false;
+        if (empty($raw)) {
+            return false;
+        }
         $parts = array_map('intval', array_filter(preg_split('/[|,]/', $raw)));
+
         return in_array($needle, $parts, true);
     }
 

@@ -17,12 +17,13 @@ class ForgotController extends Controller
     {
         if ($request->isMethod('post') && $request->filled('token')) {
             $data = $request->validate([
-                'token'    => 'required|string',
+                'token' => 'required|string',
                 'password' => 'required|string|min:6|confirmed',
             ]);
             $user = $this->auth->resetPassword($data['token'], $data['password']);
             if ($user) {
                 session()->flash('flash_success', 'Password updated — please log in.');
+
                 return redirect()->route('auth.login');
             }
             session()->flash('flash_error', 'Invalid or expired reset link.');

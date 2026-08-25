@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Schema;
  *   - reviews.user_id                 (seller aggregate)
  * No columns added/dropped; rollback drops only the indexes.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         if (Schema::hasTable('custom_data')) {
@@ -40,16 +41,21 @@ return new class extends Migration {
     public function down(): void
     {
         $drop = function (string $table, array $indexes): void {
-            if (! Schema::hasTable($table)) return;
+            if (!Schema::hasTable($table)) {
+                return;
+            }
             Schema::table($table, function (Blueprint $t) use ($indexes) {
                 foreach ($indexes as $ix) {
-                    try { $t->dropIndex($ix); } catch (\Throwable $e) { /* ignore */ }
+                    try {
+                        $t->dropIndex($ix);
+                    } catch (Throwable $e) { /* ignore */
+                    }
                 }
             });
         };
         $drop('custom_data', ['idx_custom_data_product_field']);
-        $drop('messages',    ['idx_messages_post']);
-        $drop('product',     ['idx_product_subcategory']);
-        $drop('reviews',     ['idx_reviews_user']);
+        $drop('messages', ['idx_messages_post']);
+        $drop('product', ['idx_product_subcategory']);
+        $drop('reviews', ['idx_reviews_user']);
     }
 };

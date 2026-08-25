@@ -121,11 +121,11 @@ class SubscriptionPaymentFlowTest extends TestCase
         ];
         $payload['verify_sign_sha2'] = hash(
             'sha256',
-            'amount=500.00&status=VALID&store_amount=487.50&store_passwd=' . hash('sha256', 'qwerty') . '&tran_id=ES_CALLBACK_TEST&val_id=VALIDATION_ID',
+            'amount=500.00&status=VALID&store_amount=487.50&store_passwd='.hash('sha256', 'qwerty').'&tran_id=ES_CALLBACK_TEST&val_id=VALIDATION_ID',
         );
 
         $this->post('/api/v1/payments/sslcommerz/success', $payload)
-            ->assertRedirect('http://localhost:3000/membership/success?tx=' . $transaction->id . '&status=success');
+            ->assertRedirect('http://localhost:3000/membership/success?tx='.$transaction->id.'&status=success');
 
         $this->assertSame('success', $transaction->fresh()->status->value);
         $this->assertNotNull($transaction->fresh()->fulfilled_at);

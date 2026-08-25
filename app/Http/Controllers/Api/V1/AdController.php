@@ -33,26 +33,26 @@ class AdController extends Controller
 
     /** API field → DB column whitelist for filters. */
     private const ALLOWED_FILTERS = [
-        'category'     => 'category',
+        'category' => 'category',
         'sub_category' => 'sub_category',
-        'city'         => 'city',
-        'state'        => 'state',
-        'country'      => 'country',
-        'price'        => 'price',
-        'featured'     => 'featured',
-        'urgent'       => 'urgent',
-        'highlight'    => 'highlight',
-        'user'         => 'user_id',
-        'condition'    => 'condition',
+        'city' => 'city',
+        'state' => 'state',
+        'country' => 'country',
+        'price' => 'price',
+        'featured' => 'featured',
+        'urgent' => 'urgent',
+        'highlight' => 'highlight',
+        'user' => 'user_id',
+        'condition' => 'condition',
     ];
 
     /** API field → DB column whitelist for sort. */
     private const ALLOWED_SORTS = [
         'created_at' => 'created_at',
-        'price'      => 'price',
-        'view'       => 'view',
-        'featured'   => 'featured',
-        'id'         => 'id',
+        'price' => 'price',
+        'view' => 'view',
+        'featured' => 'featured',
+        'id' => 'id',
     ];
 
     public function index(Request $request)
@@ -73,7 +73,7 @@ class AdController extends Controller
 
         // Default sort surfaces featured/urgent first, newest last — matches the
         // "Featured" badge behaviour in the Browse-page reference.
-        if (! $request->query('sort')) {
+        if (!$request->query('sort')) {
             $query->orderByDesc('featured')->orderByDesc('urgent')->orderByDesc('id');
         }
         $this->applyIncludes($query, $request);
@@ -91,16 +91,20 @@ class AdController extends Controller
     private function applyCustomFieldFilters($query, Request $request): void
     {
         $filters = $request->query('filter', []);
-        if (! is_array($filters) || empty($filters['custom']) || ! is_array($filters['custom'])) return;
+        if (!is_array($filters) || empty($filters['custom']) || !is_array($filters['custom'])) {
+            return;
+        }
 
         foreach ($filters['custom'] as $fieldId => $spec) {
             $fieldId = (int) $fieldId;
-            if ($fieldId <= 0) continue;
+            if ($fieldId <= 0) {
+                continue;
+            }
 
-            $alias = 'cd_' . $fieldId;
+            $alias = 'cd_'.$fieldId;
             $query->join("custom_data as {$alias}", function ($j) use ($alias, $fieldId) {
                 $j->on("{$alias}.product_id", '=', 'product.id')
-                  ->where("{$alias}.field_id", $fieldId);
+                    ->where("{$alias}.field_id", $fieldId);
             });
 
             if (is_array($spec)) {
@@ -110,9 +114,12 @@ class AdController extends Controller
                             $arr = is_array($val) ? $val : explode(',', (string) $val);
                             $query->whereIn("{$alias}.field_data", array_map('trim', $arr));
                             break;
-                        case 'gte': $query->where("{$alias}.field_data", '>=', $val); break;
-                        case 'lte': $query->where("{$alias}.field_data", '<=', $val); break;
-                        case 'like': $query->where("{$alias}.field_data", 'like', "%{$val}%"); break;
+                        case 'gte': $query->where("{$alias}.field_data", '>=', $val);
+                            break;
+                        case 'lte': $query->where("{$alias}.field_data", '<=', $val);
+                            break;
+                        case 'like': $query->where("{$alias}.field_data", 'like', "%{$val}%");
+                            break;
                         default:     $query->where("{$alias}.field_data", $val);
                     }
                 }
@@ -129,20 +136,20 @@ class AdController extends Controller
         abort_if($id <= 0, 404);
 
         $ad = Post::with(['category', 'subCategory', 'user', 'customData'])
-                  ->where('id', $id)
-                  ->where(function ($q) {
-                      // Public: only active, non-hidden ads. The ad's own
-                      // author may still preview a pending/rejected ad.
-                      $q->where(fn ($inner) => $inner->where('status', 'active')->where('hide', '0')->where(function ($exp) {
-                          $exp->whereNull('expire_date')
-                              ->orWhere('expire_date', '=', 0)
-                              ->orWhere('expire_date', '>', time());
-                      }));
-                      if ($user = auth('sanctum')->user()) {
-                          $q->orWhere('user_id', $user->id);
-                      }
-                  })
-                  ->firstOrFail();
+            ->where('id', $id)
+            ->where(function ($q) {
+                // Public: only active, non-hidden ads. The ad's own
+                // author may still preview a pending/rejected ad.
+                $q->where(fn ($inner) => $inner->where('status', 'active')->where('hide', '0')->where(function ($exp) {
+                    $exp->whereNull('expire_date')
+                        ->orWhere('expire_date', '=', 0)
+                        ->orWhere('expire_date', '>', time());
+                }));
+                if ($user = auth('sanctum')->user()) {
+                    $q->orWhere('user_id', $user->id);
+                }
+            })
+            ->firstOrFail();
 
         if ($ad->bundle_items) {
             $ad->setRelation('bundleItems', Post::whereIn('id', $ad->bundle_items)->get());
@@ -159,15 +166,17 @@ class AdController extends Controller
     public function featured(Request $request)
     {
         $limit = max(1, min(24, (int) $request->query('limit', 6)));
-        $key = "ads.featured.$limit." . (string) $request->query('include', 'category,sub_category,user');
+        $key = "ads.featured.$limit.".(string) $request->query('include', 'category,sub_category,user');
         // Featured rail changes often (promotions rotate) → short 120s TTL.
         $rows = Cache::remember($key, 120, function () use ($limit, $request) {
             $q = Post::query()->active()->featured()
-                     ->orderByDesc('id')
-                     ->limit($limit);
+                ->orderByDesc('id')
+                ->limit($limit);
             $this->applyIncludes($q, $request);
+
             return $q->get();
         });
+
         return $this->ok(AdResource::collection($rows));
     }
 
@@ -178,26 +187,30 @@ class AdController extends Controller
         $rows = Cache::remember($key, 300, function () use ($id, $limit, $request) {
             $ad = Post::findOrFail($id);
             $q = Post::query()->active()
-                     ->where('id', '!=', $id)
-                     ->where(function ($sub) use ($ad) {
-                         $sub->where('user_id', $ad->user_id)
-                             ->orWhere('sub_category', $ad->sub_category)
-                             ->orWhere('category', $ad->category);
-                     })
-                     ->orderByDesc('id')
-                     ->limit($limit);
+                ->where('id', '!=', $id)
+                ->where(function ($sub) use ($ad) {
+                    $sub->where('user_id', $ad->user_id)
+                        ->orWhere('sub_category', $ad->sub_category)
+                        ->orWhere('category', $ad->category);
+                })
+                ->orderByDesc('id')
+                ->limit($limit);
             $this->applyIncludes($q, $request);
+
             return $q->get();
         });
+
         return $this->ok(AdResource::collection($rows));
     }
 
     public function searchSuggest(Request $request)
     {
         $needle = trim((string) $request->query('q', ''));
-        if (mb_strlen($needle) < 2) return $this->ok([]);
+        if (mb_strlen($needle) < 2) {
+            return $this->ok([]);
+        }
 
-        $hits = Cache::remember('ads.suggest.' . md5(mb_strtolower($needle)), 60, function () use ($needle) {
+        $hits = Cache::remember('ads.suggest.'.md5(mb_strtolower($needle)), 60, function () use ($needle) {
             return Post::query()->active()
                 ->where('product_name', 'like', "%{$needle}%")
                 ->orderByDesc('id')
@@ -206,10 +219,10 @@ class AdController extends Controller
         });
 
         return $this->ok($hits->map(fn ($h) => [
-            'id'       => (int) $h->id,
-            'url_slug' => $h->id . '-' . ($h->slug ?: 'ad'),
-            'title'    => $h->product_name,
-            'price'    => (int) $h->price,
+            'id' => (int) $h->id,
+            'url_slug' => $h->id.'-'.($h->slug ?: 'ad'),
+            'title' => $h->product_name,
+            'price' => (int) $h->price,
         ]));
     }
 
@@ -218,12 +231,14 @@ class AdController extends Controller
     {
         $requested = array_filter(explode(',', (string) $request->query('include', 'category,sub_category,user')));
         $map = [
-            'category'     => 'category',
+            'category' => 'category',
             'sub_category' => 'subCategory',
-            'user'         => 'user',
+            'user' => 'user',
         ];
         foreach ($requested as $r) {
-            if (isset($map[trim($r)])) $query->with($map[trim($r)]);
+            if (isset($map[trim($r)])) {
+                $query->with($map[trim($r)]);
+            }
         }
     }
 }

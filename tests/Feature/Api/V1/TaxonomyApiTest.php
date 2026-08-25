@@ -23,7 +23,7 @@ class TaxonomyApiTest extends TestCase
         SubCategory::create(['sub_cat_id' => 11, 'main_cat_id' => 1, 'cat_order' => 2, 'sub_cat_name' => 'Bikes', 'slug' => 'bikes']);
         Country::create(['id' => 1, 'code' => 'BD', 'iso3' => 'BGD', 'name' => 'Bangladesh', 'active' => 1]);
         City::create(['id' => 1, 'country_code' => 'BD', 'name' => 'Dhaka',     'active' => 1]);
-        City::create(['id' => 2, 'country_code' => 'BD', 'name' => 'Chittagong','active' => 1]);
+        City::create(['id' => 2, 'country_code' => 'BD', 'name' => 'Chittagong', 'active' => 1]);
         Currency::create(['id' => 1, 'code' => 'USD', 'name' => 'US Dollar', 'html_entity' => '$', 'in_left' => 1, 'decimal_places' => 2]);
         Language::create(['id' => 1, 'code' => 'en',  'name' => 'English', 'active' => 1, 'default' => 1]);
     }
@@ -32,7 +32,7 @@ class TaxonomyApiTest extends TestCase
     {
         $this->seedCore();
         $res = $this->getJson('/api/v1/categories')->assertOk();
-        $res->assertJsonStructure(['data' => [['id','name','slug','sub_categories']]]);
+        $res->assertJsonStructure(['data' => [['id', 'name', 'slug', 'sub_categories']]]);
         $this->assertSame('Vehicles', $res->json('data.0.name'));
         $this->assertCount(2, $res->json('data.0.sub_categories'));
     }
@@ -63,7 +63,7 @@ class TaxonomyApiTest extends TestCase
 
         $this->getJson('/api/v1/countries/BD/cities')
             ->assertOk()
-            ->assertJsonStructure(['data', 'meta' => ['current_page','total']])
+            ->assertJsonStructure(['data', 'meta' => ['current_page', 'total']])
             ->assertJsonCount(2, 'data');
     }
 
@@ -71,7 +71,7 @@ class TaxonomyApiTest extends TestCase
     {
         $this->seedCore();
         $this->getJson('/api/v1/currencies')->assertOk()->assertJsonPath('data.0.code', 'USD');
-        $this->getJson('/api/v1/languages') ->assertOk()->assertJsonPath('data.0.code', 'en');
-        $this->getJson('/api/v1/settings')  ->assertOk()->assertJsonPath('data.settings.site_name', config('app.name'));
+        $this->getJson('/api/v1/languages')->assertOk()->assertJsonPath('data.0.code', 'en');
+        $this->getJson('/api/v1/settings')->assertOk()->assertJsonPath('data.settings.site_name', config('app.name'));
     }
 }

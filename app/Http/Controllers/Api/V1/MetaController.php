@@ -8,7 +8,6 @@ use App\Http\Resources\V1\LanguageResource;
 use App\Models\Currency;
 use App\Models\Language;
 use App\Models\Option;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -29,8 +28,7 @@ class MetaController extends Controller
     public function languages()
     {
         return $this->ok(LanguageResource::collection(
-            Cache::remember('meta.languages', 300, fn () =>
-                Language::where('active', 1)->orderByDesc('default')->orderBy('name')->get())
+            Cache::remember('meta.languages', 300, fn () => Language::where('active', 1)->orderByDesc('default')->orderBy('name')->get())
         ));
     }
 
@@ -42,15 +40,15 @@ class MetaController extends Controller
     public function settings()
     {
         $defaults = [
-            'site_name'        => config('app.name', 'offersale.'),
+            'site_name' => config('app.name', 'offersale.'),
             'default_currency' => 'BDT',
-            'currency_symbol'  => '৳',
-            'currency_code'    => 'BDT',
-            'default_locale'   => config('app.locale', 'en'),
-            'features'         => [
-                'chat'         => true,
-                'favourites'   => true,
-                'reviews'      => true,
+            'currency_symbol' => '৳',
+            'currency_code' => 'BDT',
+            'default_locale' => config('app.locale', 'en'),
+            'features' => [
+                'chat' => true,
+                'favourites' => true,
+                'reviews' => true,
                 'featured_ads' => true,
             ],
         ];
@@ -59,6 +57,7 @@ class MetaController extends Controller
             try {
                 $rows = Option::all(['option_name', 'option_value'])
                     ->pluck('option_value', 'option_name')->toArray();
+
                 return array_replace($defaults, $rows);
             } catch (\Throwable) {
                 return $defaults;

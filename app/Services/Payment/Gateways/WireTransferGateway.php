@@ -10,19 +10,27 @@ use App\Models\Transaction;
  */
 class WireTransferGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'wire_transfer'; }
-    public function label(): string { return 'Wire Transfer / Bank Deposit'; }
+    public function slug(): string
+    {
+        return 'wire_transfer';
+    }
+
+    public function label(): string
+    {
+        return 'Wire Transfer / Bank Deposit';
+    }
 
     public function initiate(Transaction $tx): mixed
     {
         $tx->transaction_gatway = $this->slug();
         $tx->status = 'pending';
         $tx->save();
+
         // Redirect to a public page that shows bank details.
         return route('payment', [
             'access_token' => $tx->id,
-            'i'            => $this->slug(),
-            'status'       => 'awaiting_transfer',
+            'i' => $this->slug(),
+            'status' => 'awaiting_transfer',
         ]);
     }
 
@@ -33,6 +41,7 @@ class WireTransferGateway extends AbstractGateway
             $tx->status = 'success';
         }
         $tx->save();
+
         return $tx;
     }
 }

@@ -12,17 +12,24 @@ use Srmklive\PayPal\Services\PayPal as PayPalClient;
  */
 class PaypalGateway extends AbstractGateway
 {
-    public function slug(): string  { return 'paypal'; }
-    public function label(): string { return 'PayPal'; }
+    public function slug(): string
+    {
+        return 'paypal';
+    }
+
+    public function label(): string
+    {
+        return 'PayPal';
+    }
 
     private function client(): PayPalClient
     {
         $c = new PayPalClient([
             'mode' => $this->conf('mode', 'sandbox'),
             $this->conf('mode', 'sandbox') => [
-                'client_id'     => $this->conf('client_id', ''),
+                'client_id' => $this->conf('client_id', ''),
                 'client_secret' => $this->conf('secret', ''),
-                'app_id'        => 'APP-80W284485P519543T',
+                'app_id' => 'APP-80W284485P519543T',
             ],
             'currency' => $this->conf('currency', 'USD'),
             'notify_url' => '',
@@ -30,16 +37,18 @@ class PaypalGateway extends AbstractGateway
             'validate_ssl' => true,
         ]);
         $c->getAccessToken();
+
         return $c;
     }
 
     public function initiate(Transaction $tx): mixed
     {
         // If credentials not configured, gracefully fall back so the site keeps working.
-        if (! $this->conf('client_id')) {
+        if (!$this->conf('client_id')) {
             $tx->status = 'pending';
             $tx->transaction_gatway = $this->slug();
             $tx->save();
+
             return route('payment', ['access_token' => $tx->id, 'i' => $this->slug(), 'status' => 'pending']);
         }
         $client = $this->client();
@@ -51,21 +60,24 @@ class PaypalGateway extends AbstractGateway
                     'currency_code' => $this->conf('currency', 'USD'),
                     'value' => number_format((float) $tx->amount, 2, '.', ''),
                 ],
-                'description' => $tx->product_name ?? ('Transaction #' . $tx->id),
+                'description' => $tx->product_name ?? ('Transaction #'.$tx->id),
             ]],
             'application_context' => [
-                'return_url' => route('payment.ipn', ['i' => 'paypal']) . '?tx=' . $tx->id . '&result=success',
-                'cancel_url' => route('payment.ipn', ['i' => 'paypal']) . '?tx=' . $tx->id . '&result=cancel',
+                'return_url' => route('payment.ipn', ['i' => 'paypal']).'?tx='.$tx->id.'&result=success',
+                'cancel_url' => route('payment.ipn', ['i' => 'paypal']).'?tx='.$tx->id.'&result=cancel',
             ],
         ]);
         // Persist PayPal order id + redirect user to approval url
         $tx->payment_id = $order['id'] ?? null;
-        $tx->status     = 'pending';
+        $tx->status = 'pending';
         $tx->transaction_gatway = $this->slug();
         $tx->save();
         foreach ($order['links'] ?? [] as $link) {
-            if (($link['rel'] ?? '') === 'approve') return $link['href'];
+            if (($link['rel'] ?? '') === 'approve') {
+                return $link['href'];
+            }
         }
+
         return route('payment', ['access_token' => $tx->id, 'i' => 'paypal']);
     }
 
@@ -87,6 +99,7 @@ class PaypalGateway extends AbstractGateway
             $tx->status = 'cancel';
         }
         $tx->save();
+
         return $tx;
     }
 }

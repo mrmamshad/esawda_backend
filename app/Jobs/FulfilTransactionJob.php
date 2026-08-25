@@ -24,6 +24,7 @@ class FulfilTransactionJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 5;
+
     public array $backoff = [10, 30, 60, 180];
 
     public function __construct(public int $transactionId) {}
@@ -37,7 +38,7 @@ class FulfilTransactionJob implements ShouldQueue
             /** @var Transaction|null $tx */
             $tx = Transaction::query()->lockForUpdate()->find($this->transactionId);
 
-            if (! $tx || $tx->status !== TransactionStatus::Success || $tx->fulfilled_at) {
+            if (!$tx || $tx->status !== TransactionStatus::Success || $tx->fulfilled_at) {
                 return;
             }
 
@@ -124,7 +125,7 @@ class FulfilTransactionJob implements ShouldQueue
         $plan = Plan::find($tx->plan_id);
         $user = User::find($tx->seller_id);
 
-        if (! $plan || ! $user) {
+        if (!$plan || !$user) {
             throw new RuntimeException("Missing plan or user for transaction {$tx->id}");
         }
 
@@ -143,29 +144,29 @@ class FulfilTransactionJob implements ShouldQueue
         $expiresAt = $cadence === 'annual' ? $base->addYear() : $base->addMonth();
 
         $user->forceFill([
-            'group_id'        => $plan->name ?? $user->group_id,
-            'plan_id'         => $plan->id,
+            'group_id' => $plan->name ?? $user->group_id,
+            'plan_id' => $plan->id,
             'plan_expires_at' => $expiresAt,
-            'ads_remaining'   => (int) ($settings['ads_limit'] ?? 10),
-            'updated_at'      => now(),
+            'ads_remaining' => (int) ($settings['ads_limit'] ?? 10),
+            'updated_at' => now(),
         ])->save();
     }
 
     private function fulfilAdUpgrade(Transaction $tx): void
     {
         $post = Post::find($tx->product_id);
-        if (! $post) {
+        if (!$post) {
             throw new RuntimeException("Missing product for upgrade transaction {$tx->id}");
         }
 
         $flags = $this->meta($tx);
         $post->forceFill([
-            'featured'      => ! empty($flags['featured']) ? '1' : $post->featured,
-            'urgent'        => ! empty($flags['urgent']) ? '1' : $post->urgent,
-            'highlight'     => ! empty($flags['highlight']) ? '1' : $post->highlight,
-            'paid'          => true,
-            'transaction_id'=> $tx->id,
-            'updated_at'    => now(),
+            'featured' => !empty($flags['featured']) ? '1' : $post->featured,
+            'urgent' => !empty($flags['urgent']) ? '1' : $post->urgent,
+            'highlight' => !empty($flags['highlight']) ? '1' : $post->highlight,
+            'paid' => true,
+            'transaction_id' => $tx->id,
+            'updated_at' => now(),
         ])->save();
     }
 
@@ -173,32 +174,32 @@ class FulfilTransactionJob implements ShouldQueue
     {
         $data = $this->meta($tx);
         $user = User::find($tx->seller_id);
-        if (! $user) {
+        if (!$user) {
             throw new RuntimeException("Missing user for ad-post transaction {$tx->id}");
         }
 
         $post = Post::create([
-            'user_id'        => $user->id,
-            'product_name'   => $data['title'] ?? 'Untitled',
-            'description'    => $data['description'] ?? '',
-            'price'          => (int) ($data['price'] ?? 0),
-            'category'       => (int) ($data['category'] ?? 0),
-            'sub_category'   => isset($data['sub_category']) ? (int) $data['sub_category'] : null,
-            'condition'      => $data['condition'] ?? 'used',
-            'phone'          => $data['phone'] ?? null,
-            'location'       => $data['address'] ?? null,
-            'city'           => $data['city'] ?? null,
-            'country'        => $data['country'] ?? null,
-            'status'         => 'pending',
-            'paid'           => true,
+            'user_id' => $user->id,
+            'product_name' => $data['title'] ?? 'Untitled',
+            'description' => $data['description'] ?? '',
+            'price' => (int) ($data['price'] ?? 0),
+            'category' => (int) ($data['category'] ?? 0),
+            'sub_category' => isset($data['sub_category']) ? (int) $data['sub_category'] : null,
+            'condition' => $data['condition'] ?? 'used',
+            'phone' => $data['phone'] ?? null,
+            'location' => $data['address'] ?? null,
+            'city' => $data['city'] ?? null,
+            'country' => $data['country'] ?? null,
+            'status' => 'pending',
+            'paid' => true,
             'transaction_id' => $tx->id,
-            'featured'       => ! empty($data['featured']) ? '1' : '0',
-            'urgent'         => ! empty($data['urgent']) ? '1' : '0',
-            'highlight'      => ! empty($data['highlight']) ? '1' : '0',
-            'hide'           => '0',
-            'expire_date'    => now()->addDays(60)->timestamp,
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'featured' => !empty($data['featured']) ? '1' : '0',
+            'urgent' => !empty($data['urgent']) ? '1' : '0',
+            'highlight' => !empty($data['highlight']) ? '1' : '0',
+            'hide' => '0',
+            'expire_date' => now()->addDays(60)->timestamp,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $tx->forceFill(['product_id' => $post->id])->save();
@@ -213,7 +214,7 @@ class FulfilTransactionJob implements ShouldQueue
     private function fulfilPaidListing(Transaction $tx): void
     {
         $post = Post::find($tx->product_id);
-        if (! $post) {
+        if (!$post) {
             throw new RuntimeException("Missing product for paid-listing transaction {$tx->id}");
         }
 
@@ -229,7 +230,7 @@ class FulfilTransactionJob implements ShouldQueue
     private function fulfilProductPurchase(Transaction $tx): void
     {
         $post = Post::find($tx->product_id);
-        if (! $post) {
+        if (!$post) {
             throw new RuntimeException("Missing product for purchase transaction {$tx->id}");
         }
 

@@ -18,19 +18,20 @@ class AuthTest extends TestCase
     {
         $req = Request::create('/', 'GET');
         $req->setLaravelSession(app('session.store'));
+
         return $req;
     }
 
     public function test_login_with_legacy_password_hash(): void
     {
         $u = User::create([
-            'username'      => 'testuser',
-            'email'         => 'test@example.com',
+            'username' => 'testuser',
+            'email' => 'test@example.com',
             'password_hash' => Hash::make('secret123'),
-            'status'        => '1',
-            'group_id'      => 'free',
-            'created_at'    => now(),
-            'updated_at'    => now(),
+            'status' => '1',
+            'group_id' => 'free',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
         $user = app(AuthService::class)->attempt('test@example.com', 'secret123', $this->makeReq());
         $this->assertNotNull($user);
@@ -40,10 +41,10 @@ class AuthTest extends TestCase
     public function test_login_rejects_wrong_password(): void
     {
         User::create([
-            'username'      => 'a',
-            'email'         => 'a@a.com',
+            'username' => 'a',
+            'email' => 'a@a.com',
             'password_hash' => Hash::make('right'),
-            'status'        => '1',
+            'status' => '1',
         ]);
         $this->assertNull(app(AuthService::class)->attempt('a@a.com', 'wrong', $this->makeReq()));
     }

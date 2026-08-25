@@ -11,7 +11,7 @@ class TemplateBridgeTest extends TestCase
     {
         $this->assertStringContainsString(
             "__('quickad.hello')",
-            (new TemplateBridge())->convert('<h1>{LANG_HELLO}</h1>')
+            (new TemplateBridge)->convert('<h1>{LANG_HELLO}</h1>')
         );
     }
 
@@ -19,20 +19,20 @@ class TemplateBridgeTest extends TestCase
     {
         $this->assertStringContainsString(
             "\$link['LOGIN']",
-            (new TemplateBridge())->convert('<a href="{LINK_LOGIN}">go</a>')
+            (new TemplateBridge)->convert('<a href="{LINK_LOGIN}">go</a>')
         );
     }
 
     public function test_if_block(): void
     {
-        $out = (new TemplateBridge())->convert("IF('{X}'!=''){\n<p>yes</p>\n{:IF}");
+        $out = (new TemplateBridge)->convert("IF('{X}'!=''){\n<p>yes</p>\n{:IF}");
         $this->assertStringContainsString('@if(', $out);
         $this->assertStringContainsString('@endif', $out);
     }
 
     public function test_loop_block(): void
     {
-        $out = (new TemplateBridge())->convert("<!-- BEGIN LOOP items --><li>{item.title}</li><!-- END LOOP -->");
+        $out = (new TemplateBridge)->convert('<!-- BEGIN LOOP items --><li>{item.title}</li><!-- END LOOP -->');
         $this->assertStringContainsString('@foreach', $out);
         $this->assertStringContainsString('@endforeach', $out);
         $this->assertStringContainsString("\$item['title']", $out);
@@ -42,7 +42,7 @@ class TemplateBridgeTest extends TestCase
     {
         $this->assertStringContainsString(
             "{{ \$username ?? '' }}",
-            (new TemplateBridge())->convert('<b>{USERNAME}</b>')
+            (new TemplateBridge)->convert('<b>{USERNAME}</b>')
         );
     }
 }

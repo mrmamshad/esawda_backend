@@ -9,5 +9,9 @@ use Filament\Resources\Pages\ListRecords;
 class ListPlans extends ListRecords
 {
     protected static string $resource = PlanResource::class;
-    protected function getHeaderActions(): array { return [Actions\CreateAction::make()]; }
+
+    protected function getHeaderActions(): array
+    {
+        return [Actions\CreateAction::make()];
+    }
 }

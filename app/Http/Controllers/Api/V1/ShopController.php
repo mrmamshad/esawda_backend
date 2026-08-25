@@ -4,10 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\UserResource;
-use App\Models\User;
 use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Shop-owner onboarding + subscription helpers.
@@ -32,32 +30,32 @@ class ShopController extends Controller
     public function apply(Request $request)
     {
         $data = $request->validate([
-            'owner_name'     => ['required', 'string', 'max:150'],
-            'owner_phone'    => ['required', 'string', 'max:30'],
-            'shop_name'      => ['required', 'string', 'max:191'],
-            'shop_address'   => ['required', 'string', 'max:500'],
-            'shop_category'  => ['nullable', 'string', 'max:100'],
-            'shop_description'=> ['nullable', 'string', 'max:2000'],
-            'documents'      => ['required', 'array', 'min:1', 'max:6'],
-            'documents.*'    => ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'owner_name' => ['required', 'string', 'max:150'],
+            'owner_phone' => ['required', 'string', 'max:30'],
+            'shop_name' => ['required', 'string', 'max:191'],
+            'shop_address' => ['required', 'string', 'max:500'],
+            'shop_category' => ['nullable', 'string', 'max:100'],
+            'shop_description' => ['nullable', 'string', 'max:2000'],
+            'documents' => ['required', 'array', 'min:1', 'max:6'],
+            'documents.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ]);
 
         $user = $request->user();
 
         $docPaths = [];
         foreach ($data['documents'] as $file) {
-            $docPaths[] = $file->store('shop-documents/' . $user->id, 'public');
+            $docPaths[] = $file->store('shop-documents/'.$user->id, 'public');
         }
 
         $user->forceFill([
-            'user_type'        => 'seller',
-            'name'             => $data['owner_name'],
-            'phone'            => $data['owner_phone'],
-            'shop_name'        => $data['shop_name'],
-            'shop_address'     => $data['shop_address'],
+            'user_type' => 'seller',
+            'name' => $data['owner_name'],
+            'phone' => $data['owner_phone'],
+            'shop_name' => $data['shop_name'],
+            'shop_address' => $data['shop_address'],
             'shop_description' => $data['shop_description'] ?? null,
-            'shop_documents'   => $docPaths,
-            'updated_at'       => now(),
+            'shop_documents' => $docPaths,
+            'updated_at' => now(),
         ])->save();
 
         $this->mail->shopOpenedToSeller($user);
@@ -65,7 +63,7 @@ class ShopController extends Controller
 
         return $this->ok([
             'message' => 'Your shop is open.',
-            'user'    => (new UserResource($user))->resolve(),
+            'user' => (new UserResource($user))->resolve(),
         ]);
     }
 
@@ -76,16 +74,16 @@ class ShopController extends Controller
     {
         $user = $request->user();
 
-        $active = ! empty($user->plan_expires_at)
+        $active = !empty($user->plan_expires_at)
             && $user->plan_expires_at->isFuture();
 
         return $this->ok([
-            'is_shop'        => $user->isShop(),
-            'shop_name'      => $user->shop_name,
-            'plan_active'    => $active,
-            'plan_name'      => $user->group_id ?? 'free',
-            'plan_expires_at'=> optional($user->plan_expires_at)->toIso8601String(),
-            'ads_remaining'  => (int) $user->ads_remaining,
+            'is_shop' => $user->isShop(),
+            'shop_name' => $user->shop_name,
+            'plan_active' => $active,
+            'plan_name' => $user->group_id ?? 'free',
+            'plan_expires_at' => optional($user->plan_expires_at)->toIso8601String(),
+            'ads_remaining' => (int) $user->ads_remaining,
         ]);
     }
 }

@@ -69,8 +69,8 @@ class AdExpiryTest extends TestCase
         $this->makeAd(['product_name' => 'Gone Fishin', 'expire_date' => time() - 3600]);
 
         $this->getJson('/api/v1/ads?q=Gone')
-             ->assertOk()
-             ->assertJsonPath('data', []);
+            ->assertOk()
+            ->assertJsonPath('data', []);
     }
 
     public function test_expired_ad_hidden_from_public_detail(): void
@@ -78,15 +78,15 @@ class AdExpiryTest extends TestCase
         $ad = $this->makeAd(['expire_date' => time() - 3600]);
 
         $this->getJson("/api/v1/ads/{$ad->id}-expired")
-             ->assertNotFound();
+            ->assertNotFound();
     }
 
     public function test_expire_command_marks_due_ads_only(): void
     {
-        $due    = $this->makeAd(['expire_date' => time() - 3600]);
+        $due = $this->makeAd(['expire_date' => time() - 3600]);
         $future = $this->makeAd(['expire_date' => time() + 3600]);
-        $never  = $this->makeAd(['expire_date' => 0]);
-        $pending= $this->makeAd(['status' => 'pending', 'expire_date' => time() - 3600]);
+        $never = $this->makeAd(['expire_date' => 0]);
+        $pending = $this->makeAd(['status' => 'pending', 'expire_date' => time() - 3600]);
 
         $this->artisan('ads:expire')->assertSuccessful();
 

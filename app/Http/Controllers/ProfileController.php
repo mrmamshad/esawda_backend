@@ -14,7 +14,9 @@ class ProfileController extends Controller
 
     public function index(Request $request, ?string $username = null)
     {
-        if (! $username) abort(404);
+        if (!$username) {
+            abort(404);
+        }
 
         $user = User::where('username', $username)->firstOrFail();
         // legacy: bump profile view
@@ -22,7 +24,10 @@ class ProfileController extends Controller
 
         $posts = Post::where('user_id', $user->id)->active()->orderByDesc('id')->paginate(12);
 
-        try { return $this->theme->render('profile', ['user' => $user, 'posts' => $posts]); }
-        catch (\Throwable) { return view('placeholder', ['legacy' => 'profile.php', 'action' => $username]); }
+        try {
+            return $this->theme->render('profile', ['user' => $user, 'posts' => $posts]);
+        } catch (\Throwable) {
+            return view('placeholder', ['legacy' => 'profile.php', 'action' => $username]);
+        }
     }
 }
