@@ -210,4 +210,35 @@ class AccountController extends Controller
             'data' => ['user' => (new UserResource($user))->resolve()],
         ]);
     }
+
+    /**
+     * POST /me/shop-banner  (multipart)  { banner: file }
+     *
+     * Wide promotional banner shown at the top of the shop's public store
+     * page and on the shop dashboard. Same storage pattern as avatar/cover —
+     * profile/ on the public disk, bare filename in DB.
+     */
+    public function uploadShopBanner(Request $request)
+    {
+        $data = $request->validate([
+            'banner' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $user = $request->user();
+        $name = Str::random(32).'.'.$data['banner']->getClientOriginalExtension();
+        $data['banner']->storeAs('profile', $name, 'public');
+
+        if ($user->shop_banner) {
+            Storage::disk('public')->delete('profile/'.$user->shop_banner);
+        }
+
+        $user->forceFill([
+            'shop_banner' => $name,
+            'updated_at' => now(),
+        ])->save();
+
+        return response()->json([
+            'data' => ['user' => (new UserResource($user))->resolve()],
+        ]);
+    }
 }

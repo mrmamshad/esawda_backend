@@ -117,6 +117,7 @@ Route::prefix('v1')->group(function () {
         Route::put('me', [AccountController::class, 'updateProfile']);
         Route::post('me/avatar', [AccountController::class, 'uploadAvatar']);
         Route::post('me/cover', [AccountController::class, 'uploadCover']);
+        Route::post('me/shop-banner', [AccountController::class, 'uploadShopBanner']);
         Route::post('me/password', [AccountController::class, 'changePassword']);
         Route::get('me/transactions', [AccountController::class, 'transactions']);
         Route::get('me/purchases', [AccountController::class, 'purchases']);

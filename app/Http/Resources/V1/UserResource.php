@@ -28,6 +28,7 @@ class UserResource extends BaseResource
             'ads_remaining' => (int) $this->ads_remaining,
             'shop_name' => $this->shop_name,
             'shop_address' => $this->shop_address,
+            'shop_banner_url' => $this->shop_banner ? $imageBase.$this->shop_banner : null,
             'avatar_url' => $imageBase.($this->image && $this->image !== 'default_user.png' ? $this->image : 'default_user.png'),
             'avatar_set' => !empty($this->image) && $this->image !== 'default_user.png',
             'cover_url' => $this->cover ? $imageBase.$this->cover : null,

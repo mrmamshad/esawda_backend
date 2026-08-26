@@ -18,6 +18,7 @@ class SellerMiniResource extends BaseResource
             'name' => $this->name ?: $this->username,
             'is_shop' => (bool) $this->isShop(),
             'shop_name' => $this->shop_name ?: null,
+            'shop_banner_url' => $this->shop_banner ? $base.$this->shop_banner : null,
             'avatar_url' => $base.($this->image ?: 'default_user.png'),
             'cover_url' => $this->cover ? $base.$this->cover : null,
             'online' => $this->bool($this->online),

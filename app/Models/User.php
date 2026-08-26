@@ -31,7 +31,7 @@ class User extends Model implements Authenticatable
         'tagline', 'description', 'website', 'image', 'sex', 'postcode',
         'facebook', 'twitter', 'googleplus', 'instagram', 'linkedin', 'youtube',
         'oauth_provider', 'oauth_link', 'shop_name', 'shop_description',
-        'shop_address', 'shop_documents', 'created_at', 'updated_at',
+        'shop_address', 'shop_banner', 'shop_documents', 'created_at', 'updated_at',
     ];
 
     public $timestamps = true;

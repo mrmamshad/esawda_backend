@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\UserResource;
 use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Shop-owner onboarding + subscription helpers.
@@ -38,6 +40,9 @@ class ShopController extends Controller
             'shop_description' => ['nullable', 'string', 'max:2000'],
             'documents' => ['required', 'array', 'min:1', 'max:6'],
             'documents.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'cover' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'banner' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
         $user = $request->user();
@@ -47,7 +52,7 @@ class ShopController extends Controller
             $docPaths[] = $file->store('shop-documents/'.$user->id, 'public');
         }
 
-        $user->forceFill([
+        $fill = [
             'user_type' => 'seller',
             'name' => $data['owner_name'],
             'phone' => $data['owner_phone'],
@@ -56,7 +61,20 @@ class ShopController extends Controller
             'shop_description' => $data['shop_description'] ?? null,
             'shop_documents' => $docPaths,
             'updated_at' => now(),
-        ])->save();
+        ];
+
+        // Optional profile picture / cover / banner — same pattern as the
+        // dedicated upload endpoints, but bundled so the apply flow is one
+        // round-trip.
+        foreach (['avatar' => 'image', 'cover' => 'cover', 'banner' => 'shop_banner'] as $input => $column) {
+            if ($request->hasFile($input)) {
+                $name = Str::random(32).'.'.$data[$input]->getClientOriginalExtension();
+                $data[$input]->storeAs('profile', $name, 'public');
+                $fill[$column] = $name;
+            }
+        }
+
+        $user->forceFill($fill)->save();
 
         $this->mail->shopOpenedToSeller($user);
         $this->mail->newShopToAdmin($user);
