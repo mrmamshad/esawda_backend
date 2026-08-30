@@ -73,6 +73,22 @@ class UserAdminController extends Controller
         return $this->ok(['message' => 'User un-banned.', 'user' => $user]);
     }
 
+    public function verifyShop(int $id)
+    {
+        $user = User::findOrFail($id);
+        $user->forceFill(['shop_verified_at' => now(), 'updated_at' => now()])->save();
+
+        return $this->ok(['message' => 'Shop verified.', 'user' => $user]);
+    }
+
+    public function unverifyShop(int $id)
+    {
+        $user = User::findOrFail($id);
+        $user->forceFill(['shop_verified_at' => null, 'updated_at' => now()])->save();
+
+        return $this->ok(['message' => 'Shop verification removed.', 'user' => $user]);
+    }
+
     public function destroy(int $id)
     {
         User::findOrFail($id)->delete();
