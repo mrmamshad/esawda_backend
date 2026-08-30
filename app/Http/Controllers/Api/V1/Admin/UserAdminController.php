@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class UserAdminController extends Controller
 {
@@ -87,6 +88,25 @@ class UserAdminController extends Controller
         $user->forceFill(['shop_verified_at' => null, 'updated_at' => now()])->save();
 
         return $this->ok(['message' => 'Shop verification removed.', 'user' => $user]);
+    }
+
+    /**
+     * Admin-reset a shop/user password. Unlike the self-service flow, no
+     * current_password is needed — the admin simply sets a new one.
+     */
+    public function resetPassword(int $id, Request $request)
+    {
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'max:191'],
+        ]);
+
+        $user = User::findOrFail($id);
+        $user->forceFill([
+            'password_hash' => Hash::make($data['password']),
+            'updated_at' => now(),
+        ])->save();
+
+        return $this->ok(['message' => 'Password updated.', 'user' => $user]);
     }
 
     public function destroy(int $id)

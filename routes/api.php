@@ -174,6 +174,7 @@ Route::prefix('v1')->group(function () {
         Route::post('users/{id}/unban', [UserAdminController::class, 'unban'])->whereNumber('id');
         Route::post('users/{id}/verify-shop', [UserAdminController::class, 'verifyShop'])->whereNumber('id');
         Route::post('users/{id}/unverify-shop', [UserAdminController::class, 'unverifyShop'])->whereNumber('id');
+        Route::post('users/{id}/reset-password', [UserAdminController::class, 'resetPassword'])->whereNumber('id');
         Route::delete('users/{id}', [UserAdminController::class, 'destroy'])->whereNumber('id');
 
         Route::get('ads', [AdAdminController::class, 'index']);
