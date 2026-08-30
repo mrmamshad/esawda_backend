@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\AdController;
+use App\Http\Controllers\Api\V1\AdPlacementController;
 use App\Http\Controllers\Api\V1\Admin\AdAdminController;
+use App\Http\Controllers\Api\V1\Admin\AdPlacementAdminController;
 use App\Http\Controllers\Api\V1\Admin\BlogAdminController;
 use App\Http\Controllers\Api\V1\Admin\CategoryAdminController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController as AdminDashboardController;
@@ -83,6 +85,7 @@ Route::prefix('v1')->group(function () {
     /* ---- Ads (public read) --------------------------------------------- */
     Route::get('ads', [AdController::class, 'index']);
     Route::get('ads/featured', [AdController::class, 'featured']);
+    Route::get('ads/placements', [AdPlacementController::class, 'index']);
     Route::get('ads/search-suggest', [AdController::class, 'searchSuggest']);
     Route::get('ads/{idSlug}', [AdController::class, 'show'])->where('idSlug', '[0-9]+(-.*)?');
     Route::get('ads/{id}/similar', [AdController::class, 'similar'])->whereNumber('id');
@@ -166,6 +169,12 @@ Route::prefix('v1')->group(function () {
     /* ---- Admin API (auth + admin middleware) -------------------------- */
     Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
         Route::get('dashboard', [AdminDashboardController::class, 'index']);
+
+        Route::get('ads/placements', [AdPlacementAdminController::class, 'index']);
+        Route::get('ads/placements/{id}', [AdPlacementAdminController::class, 'show'])->whereNumber('id');
+        Route::post('ads/placements', [AdPlacementAdminController::class, 'store']);
+        Route::put('ads/placements/{id}', [AdPlacementAdminController::class, 'update'])->whereNumber('id');
+        Route::delete('ads/placements/{id}', [AdPlacementAdminController::class, 'destroy'])->whereNumber('id');
 
         Route::get('users', [UserAdminController::class, 'index']);
         Route::get('users/{id}', [UserAdminController::class, 'show'])->whereNumber('id');
