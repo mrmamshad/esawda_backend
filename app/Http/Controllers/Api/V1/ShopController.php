@@ -7,7 +7,6 @@ use App\Http\Resources\V1\UserResource;
 use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Shop-owner onboarding + subscription helpers.
@@ -38,8 +37,9 @@ class ShopController extends Controller
             'shop_address' => ['required', 'string', 'max:500'],
             'shop_category' => ['nullable', 'string', 'max:100'],
             'shop_description' => ['nullable', 'string', 'max:2000'],
-            'documents' => ['required', 'array', 'min:1', 'max:6'],
-            'documents.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'documents' => ['required', 'array'],
+            'documents.nid' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'documents.trade_licence' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'cover' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'banner' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -47,9 +47,11 @@ class ShopController extends Controller
 
         $user = $request->user();
 
+        // Store each verification document under its own labelled key so the
+        // record is self-describing (e.g. { nid: ..., trade_licence: ... }).
         $docPaths = [];
-        foreach ($data['documents'] as $file) {
-            $docPaths[] = $file->store('shop-documents/'.$user->id, 'public');
+        foreach (['nid', 'trade_licence'] as $type) {
+            $docPaths[$type] = $data['documents'][$type]->store('shop-documents/'.$user->id, 'public');
         }
 
         $fill = [
@@ -57,9 +59,18 @@ class ShopController extends Controller
             'name' => $data['owner_name'],
             'phone' => $data['owner_phone'],
             'shop_name' => $data['shop_name'],
+            'shop_category' => $data['shop_category'] ?? null,
             'shop_address' => $data['shop_address'],
             'shop_description' => $data['shop_description'] ?? null,
             'shop_documents' => $docPaths,
+            // Shop owners must hold a paid subscription before they can list —
+            // there is no free trial. Any complimentary guest quota granted at
+            // signup is cleared the moment the account becomes a seller so the
+            // /shop panel starts on the "choose a plan" gate. (Regular single
+            // users keep their free quota; only sellers are gated here.)
+            'plan_id' => null,
+            'plan_expires_at' => null,
+            'ads_remaining' => 0,
             'updated_at' => now(),
         ];
 
@@ -98,6 +109,7 @@ class ShopController extends Controller
         return $this->ok([
             'is_shop' => $user->isShop(),
             'shop_name' => $user->shop_name,
+            'shop_verified' => ! empty($user->shop_verified_at),
             'plan_active' => $active,
             'plan_name' => $user->group_id ?? 'free',
             'plan_expires_at' => optional($user->plan_expires_at)->toIso8601String(),

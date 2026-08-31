@@ -22,6 +22,8 @@ class SellerResource extends BaseResource
             'name' => $this->name ?: $this->username,
             'is_shop' => (bool) $this->isShop(),
             'shop_name' => $this->shop_name ?: null,
+            'shop_category' => $this->shop_category ?: null,
+            'shop_verified' => ! empty($this->shop_verified_at),
             'shop_banner_url' => $this->shop_banner ? $avatarBase.$this->shop_banner : null,
             'tagline' => $this->tagline,
             'description' => $this->description,

@@ -30,7 +30,7 @@ class User extends Model implements Authenticatable
         'username', 'email', 'name', 'phone', 'city', 'country', 'address',
         'tagline', 'description', 'website', 'image', 'sex', 'postcode',
         'facebook', 'twitter', 'googleplus', 'instagram', 'linkedin', 'youtube',
-        'oauth_provider', 'oauth_link', 'shop_name', 'shop_description',
+        'oauth_provider', 'oauth_link', 'shop_name', 'shop_category', 'shop_description',
         'shop_address', 'shop_banner', 'shop_documents', 'created_at', 'updated_at',
     ];
 
@@ -39,6 +39,7 @@ class User extends Model implements Authenticatable
     protected $casts = [
         'plan_expires_at' => 'datetime',
         'shop_documents' => 'array',
+        'shop_verified_at' => 'datetime',
         'lastactive' => 'datetime',
     ];
 
