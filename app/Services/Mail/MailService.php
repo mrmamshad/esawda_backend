@@ -46,7 +46,7 @@ class MailService
 
     public function frontendUrl(string $path = ''): string
     {
-        $base = rtrim((string) explode(',', (string) env('FRONTEND_URLS', 'http://localhost:3000'))[0], '/');
+        $base = rtrim((string) config('quickad.frontend.url', 'http://localhost:3000'), '/');
 
         return $path ? $base.'/'.ltrim($path, '/') : $base;
     }
