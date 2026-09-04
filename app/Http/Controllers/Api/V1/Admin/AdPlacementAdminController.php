@@ -92,14 +92,30 @@ class AdPlacementAdminController extends Controller
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:10240'],
         ]);
 
-        if (isset($data['slug'])) $ad->slug = $data['slug'];
-        if (array_key_exists('title', $data)) $ad->title = $data['title'];
-        if (isset($data['size'])) $ad->size = $data['size'];
-        if (array_key_exists('link_url', $data)) $ad->link_url = $data['link_url'];
-        if (array_key_exists('alt_text', $data)) $ad->alt_text = $data['alt_text'];
-        if (isset($data['status'])) $ad->status = $data['status'];
-        if (array_key_exists('starts_at', $data)) $ad->starts_at = $data['starts_at'];
-        if (array_key_exists('expires_at', $data)) $ad->expires_at = $data['expires_at'];
+        if (isset($data['slug'])) {
+            $ad->slug = $data['slug'];
+        }
+        if (array_key_exists('title', $data)) {
+            $ad->title = $data['title'];
+        }
+        if (isset($data['size'])) {
+            $ad->size = $data['size'];
+        }
+        if (array_key_exists('link_url', $data)) {
+            $ad->link_url = $data['link_url'];
+        }
+        if (array_key_exists('alt_text', $data)) {
+            $ad->alt_text = $data['alt_text'];
+        }
+        if (isset($data['status'])) {
+            $ad->status = $data['status'];
+        }
+        if (array_key_exists('starts_at', $data)) {
+            $ad->starts_at = $data['starts_at'];
+        }
+        if (array_key_exists('expires_at', $data)) {
+            $ad->expires_at = $data['expires_at'];
+        }
 
         if ($request->hasFile('image')) {
             if ($ad->image_path) {
@@ -132,6 +148,7 @@ class AdPlacementAdminController extends Controller
     {
         $name = 'placement_'.Str::random(20).'.'.$file->getClientOriginalExtension();
         $file->storeAs('ads', $name, 'public');
+
         return $name;
     }
 }

@@ -30,7 +30,7 @@ class UserResource extends BaseResource
             'shop_category' => $this->shop_category,
             'shop_description' => $this->shop_description,
             'shop_address' => $this->shop_address,
-            'shop_verified' => ! empty($this->shop_verified_at),
+            'shop_verified' => !empty($this->shop_verified_at),
             'shop_verified_at' => optional($this->shop_verified_at)->toIso8601String(),
             'shop_banner_url' => $this->shop_banner ? $imageBase.$this->shop_banner : null,
             'avatar_url' => $imageBase.($this->image && $this->image !== 'default_user.png' ? $this->image : 'default_user.png'),

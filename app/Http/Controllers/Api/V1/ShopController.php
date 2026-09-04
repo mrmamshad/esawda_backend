@@ -109,7 +109,7 @@ class ShopController extends Controller
         return $this->ok([
             'is_shop' => $user->isShop(),
             'shop_name' => $user->shop_name,
-            'shop_verified' => ! empty($user->shop_verified_at),
+            'shop_verified' => !empty($user->shop_verified_at),
             'plan_active' => $active,
             'plan_name' => $user->group_id ?? 'free',
             'plan_expires_at' => optional($user->plan_expires_at)->toIso8601String(),

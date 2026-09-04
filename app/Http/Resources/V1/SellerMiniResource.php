@@ -19,7 +19,7 @@ class SellerMiniResource extends BaseResource
             'is_shop' => (bool) $this->isShop(),
             'shop_name' => $this->shop_name ?: null,
             'shop_category' => $this->shop_category ?: null,
-            'shop_verified' => ! empty($this->shop_verified_at),
+            'shop_verified' => !empty($this->shop_verified_at),
             'shop_banner_url' => $this->shop_banner ? $base.$this->shop_banner : null,
             'avatar_url' => $base.($this->image ?: 'default_user.png'),
             'cover_url' => $this->cover ? $base.$this->cover : null,

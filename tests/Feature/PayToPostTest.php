@@ -10,7 +10,9 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Payment\PaymentManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class PayToPostTest extends TestCase
@@ -414,12 +416,12 @@ class PayToPostTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        \Illuminate\Support\Facades\Queue::fake();
-        \Illuminate\Support\Facades\Cache::shouldReceive('flush')->once();
+        Queue::fake();
+        Cache::shouldReceive('flush')->once();
 
         $this->actingAs($admin)->postJson("/api/v1/admin/ads/{$ad->id}/approve")->assertOk();
 
-        \Illuminate\Support\Facades\Queue::assertPushed(RevalidateFrontendJob::class);
+        Queue::assertPushed(RevalidateFrontendJob::class);
     }
 
     public function test_sslcommerz_callback_rejects_bad_hash(): void
