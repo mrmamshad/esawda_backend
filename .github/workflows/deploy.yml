@@ -19,6 +19,10 @@ jobs:
           key: composer-${{ hashFiles('composer.lock') }}
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
       - name: Lint (Pint)
         run: ./vendor/bin/pint --test
       - name: Tests (PHPUnit)
