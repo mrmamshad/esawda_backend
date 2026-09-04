@@ -36,6 +36,15 @@ class PayToPostTest extends TestCase
 
     public function test_ad_post_checkout_creates_transaction(): void
     {
+        // Hermetic: never hit the real SSLCommerz sandbox from tests (CI has
+        // no route/creds for it) — stub the init call like the other flows.
+        Http::fake([
+            '*/gwprocess/v4/api.php' => Http::response([
+                'status' => 'SUCCESS',
+                'GatewayPageURL' => 'https://sandbox.sslcommerz.com/EasyCheckOut/test-session',
+            ]),
+        ]);
+
         $user = User::factory()->create();
         $plan = Plan::factory()->create(['monthly_price' => 500]);
 

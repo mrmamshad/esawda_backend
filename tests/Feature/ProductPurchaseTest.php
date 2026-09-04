@@ -8,6 +8,7 @@ use App\Models\Post;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class ProductPurchaseTest extends TestCase
@@ -46,6 +47,14 @@ class ProductPurchaseTest extends TestCase
 
     public function test_product_purchase_creates_order_and_transaction(): void
     {
+        // Hermetic gateway stub (see PayToPostTest) — CI must not dial out.
+        Http::fake([
+            '*/gwprocess/v4/api.php' => Http::response([
+                'status' => 'SUCCESS',
+                'GatewayPageURL' => 'https://sandbox.sslcommerz.com/EasyCheckOut/test-session',
+            ]),
+        ]);
+
         $seller = User::factory()->create();
         $buyer = User::factory()->create();
         $post = $this->activePost($seller->id);

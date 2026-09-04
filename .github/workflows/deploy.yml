@@ -7,6 +7,11 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      # Public SSLCommerz sandbox creds — only unlock the fail-closed creds
+      # gate in tests; checkout tests stub the HTTP layer with Http::fake.
+      SSLCOMMERZ_STORE_ID: testbox
+      SSLCOMMERZ_STORE_PASSWORD: qwerty
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
