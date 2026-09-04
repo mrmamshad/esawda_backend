@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Events\MessageSent;
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -58,6 +59,8 @@ class MessageBroadcastTest extends TestCase
 
     public function test_cannot_send_message_to_self(): void
     {
+        Event::fake();
+
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)->postJson('/api/v1/messages', [
@@ -77,22 +80,30 @@ class MessageBroadcastTest extends TestCase
 
         $sender = User::factory()->create();
         $receiver = User::factory()->create();
+        $ad = Post::create([
+            'status' => 'active', 'hide' => '0', 'user_id' => $receiver->id,
+            'product_name' => 'Socket Sedan', 'slug' => 'socket-sedan',
+            'description' => 'About this ad.', 'price' => 1000,
+            'city' => 'Dhaka', 'country' => 'BD', 'view' => 0,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
 
         $this->actingAs($sender)->postJson('/api/v1/messages', [
             'to' => $receiver->id,
             'body' => 'Data structure test',
-            'post_id' => 123,
-        ]);
+            'post_id' => $ad->id,
+        ])->assertCreated();
 
-        Event::assertDispatched(MessageSent::class, function ($event) use ($sender, $receiver) {
+        Event::assertDispatched(MessageSent::class, function ($event) use ($sender, $receiver, $ad) {
             $broadcastData = $event->broadcastWith();
 
             return isset($broadcastData['id']) &&
-                   $broadcastData['from_id'] === (string) $sender->id &&
-                   $broadcastData['to_id'] === (string) $receiver->id &&
+                   $broadcastData['from_id'] === $sender->id &&
+                   $broadcastData['to_id'] === $receiver->id &&
                    $broadcastData['body'] === 'Data structure test' &&
-                   $broadcastData['post_id'] === 123 &&
-                   isset($broadcastData['created_at']);
+                   $broadcastData['type'] === 'text' &&
+                   $broadcastData['post_id'] === $ad->id &&
+                   isset($broadcastData['sent_at']);
         });
     }
 }

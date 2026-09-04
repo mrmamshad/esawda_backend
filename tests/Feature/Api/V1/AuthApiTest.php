@@ -28,7 +28,7 @@ class AuthApiTest extends TestCase
 
     public function test_register_rejects_duplicate_email(): void
     {
-        User::create([
+        User::forceCreate([
             'username' => 'bob', 'email' => 'bob@x.com',
             'password_hash' => Hash::make('x'), 'status' => '1',
         ]);
@@ -44,7 +44,7 @@ class AuthApiTest extends TestCase
 
     public function test_login_and_me_and_logout(): void
     {
-        User::create([
+        User::forceCreate([
             'username' => 'charlie', 'email' => 'c@x.com',
             'password_hash' => Hash::make('secret123'),
             'status' => '1', 'group_id' => 'free',
@@ -75,7 +75,7 @@ class AuthApiTest extends TestCase
 
     public function test_login_rejects_bad_password(): void
     {
-        User::create([
+        User::forceCreate([
             'username' => 'dana', 'email' => 'd@x.com',
             'password_hash' => Hash::make('right'), 'status' => '1',
         ]);

@@ -5,7 +5,27 @@ on:
     branches: [main]
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Lint (Pint)
+        run: ./vendor/bin/pint --test
+      - name: Tests (PHPUnit)
+        run: ./vendor/bin/phpunit
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Deploy via SSH
@@ -22,4 +42,4 @@ jobs:
             php artisan config:cache
             php artisan route:cache
             php artisan optimize
-            
+            curl -sf -o /dev/null -H 'Accept: application/json' https://api.esawda.com/api/v1/categories

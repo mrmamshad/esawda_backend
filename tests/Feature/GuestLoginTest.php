@@ -55,7 +55,7 @@ class GuestLoginTest extends TestCase
     {
         Event::fake([MessageSent::class]);
 
-        $seller = User::create([
+        $seller = User::forceCreate([
             'username' => 'seller-guest-test',
             'email' => 'seller-guest-test@example.com',
             'name' => 'Seller',
@@ -79,5 +79,68 @@ class GuestLoginTest extends TestCase
 
         $res->assertCreated()
             ->assertJsonPath('data.to_id', $seller->id);
+    }
+
+    public function test_guest_register_creates_new_account_with_quota(): void
+    {
+        $res = $this->postJson('/api/v1/auth/guest-register', [
+            'name' => 'New Poster',
+            'mobile' => '01755555555',
+            'password' => 'secret123',
+        ]);
+
+        $res->assertOk()->assertJsonStructure(['data' => ['user' => ['id'], 'token']]);
+
+        $user = User::where('phone', '01755555555')->firstOrFail();
+        $this->assertTrue((int) $user->ads_remaining > 0);
+    }
+
+    public function test_guest_register_existing_phone_returns_409_and_keeps_password(): void
+    {
+        $victim = User::forceCreate([
+            'username' => 'victim-user',
+            'email' => 'victim@example.com',
+            'name' => 'Victim',
+            'phone' => '01766666666',
+            'password_hash' => bcrypt('original-pass'),
+            'status' => '1',
+            'group_id' => 'free',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $originalHash = $victim->password_hash;
+
+        // Account-takeover attempt: must NOT reset the password or log in.
+        $this->postJson('/api/v1/auth/guest-register', [
+            'name' => 'Attacker',
+            'mobile' => '01766666666',
+            'password' => 'attacker-pass',
+        ])->assertStatus(409)
+            ->assertJsonPath('error.code', 'ACCOUNT_EXISTS');
+
+        $this->assertSame($originalHash, $victim->fresh()->password_hash);
+        $this->assertSame(1, User::where('phone', '01766666666')->count());
+    }
+
+    public function test_guest_login_refuses_email_registered_account(): void
+    {
+        User::forceCreate([
+            'username' => 'real-user',
+            'email' => 'real@example.com',
+            'name' => 'Real',
+            'phone' => '01777777777',
+            'password_hash' => bcrypt('secret123'),
+            'status' => '1',
+            'group_id' => 'free',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Passwordless token for a real account would be impersonation.
+        $this->postJson('/api/v1/auth/guest-login', [
+            'name' => 'Anyone',
+            'mobile' => '01777777777',
+        ])->assertStatus(409)
+            ->assertJsonPath('error.code', 'ACCOUNT_EXISTS');
     }
 }

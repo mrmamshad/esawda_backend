@@ -41,16 +41,30 @@ class MessageSent implements ShouldBroadcast
 
     /**
      * Get the data to broadcast.
+     *
+     * Field names mirror MessageResource so the frontend can append the
+     * payload straight into its Message[] state. NOTE: the legacy table
+     * stores the text in `message_content` with the clock in `message_date`
+     * (there is no `body`/`created_at` column) — the old mapping emitted
+     * nulls, so live bubbles arrived empty.
      */
     public function broadcastWith(): array
     {
+        $m = $this->message;
+
         return [
-            'id' => $this->message->id,
-            'from_id' => $this->message->from_id,
-            'to_id' => $this->message->to_id,
-            'post_id' => $this->message->post_id,
-            'body' => $this->message->body,
-            'created_at' => $this->message->created_at?->toISOString() ?? now()->toISOString(),
+            'id' => (int) $m->message_id,
+            'from_id' => (int) $m->from_id,
+            'to_id' => (int) $m->to_id,
+            'body' => $m->message_content,
+            'type' => $m->message_type ?: 'text',
+            'image_url' => $m->message_type === 'image'
+                ? rtrim(config('app.url'), '/').'/storage/'.$m->message_content
+                : null,
+            'post_id' => $m->post_id ? (int) $m->post_id : null,
+            'sent_at' => $m->message_date instanceof \DateTimeInterface
+                ? $m->message_date->toIso8601String()
+                : (is_string($m->message_date) ? $m->message_date : now()->toIso8601String()),
         ];
     }
 }

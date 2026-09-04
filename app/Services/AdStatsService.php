@@ -26,10 +26,12 @@ class AdStatsService
         $totalReviews = (int) $reviewsQ->count();
 
         // "Orders" concept for classifieds = distinct buyer threads on my ads.
-        $totalOrders = Message::whereIn('to_user', [$userId])->distinct('from_user')->count('from_user');
-        $activeOrders = Message::whereIn('to_user', [$userId])
-            ->where('created_at', '>=', now()->subDays(7))
-            ->distinct('from_user')->count('from_user');
+        // NOTE: legacy `messages` table uses from_id/to_id/message_date —
+        // the old from_user/to_user/created_at names 500'd in prod.
+        $totalOrders = Message::whereIn('to_id', [$userId])->distinct('from_id')->count('from_id');
+        $activeOrders = Message::whereIn('to_id', [$userId])
+            ->where('message_date', '>=', now()->subDays(7))
+            ->distinct('from_id')->count('from_id');
 
         // Sales this month from confirmed transactions (my ad-upgrade purchases).
         $salesThisMonth = (float) Transaction::where('seller_id', $userId)

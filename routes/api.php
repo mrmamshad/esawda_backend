@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\AdController;
-use App\Http\Controllers\Api\V1\AdPlacementController;
 use App\Http\Controllers\Api\V1\Admin\AdAdminController;
 use App\Http\Controllers\Api\V1\Admin\AdPlacementAdminController;
 use App\Http\Controllers\Api\V1\Admin\BlogAdminController;
@@ -14,6 +13,7 @@ use App\Http\Controllers\Api\V1\Admin\SettingsAdminController;
 use App\Http\Controllers\Api\V1\Admin\TransactionAdminController;
 use App\Http\Controllers\Api\V1\Admin\UserAdminController;
 use App\Http\Controllers\Api\V1\AdMineController;
+use App\Http\Controllers\Api\V1\AdPlacementController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CheckoutController;
@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\ContentController;
 use App\Http\Controllers\Api\V1\CountryController;
 use App\Http\Controllers\Api\V1\FavouriteController;
 use App\Http\Controllers\Api\V1\FilterSchemaController;
+use App\Http\Controllers\Api\V1\HomeController;
 use App\Http\Controllers\Api\V1\MessageController;
 use App\Http\Controllers\Api\V1\MetaController;
 use App\Http\Controllers\Api\V1\PaymentCallbackController;
@@ -81,6 +82,9 @@ Route::prefix('v1')->group(function () {
     Route::get('languages', [MetaController::class, 'languages']);
     Route::get('settings', [MetaController::class, 'settings']);
     Route::get('filter-schema', [FilterSchemaController::class, 'show']);
+
+    /* ---- Homepage aggregate (one-shot, cached 120s) -------------------- */
+    Route::get('home', [HomeController::class, 'index']);
 
     /* ---- Ads (public read) --------------------------------------------- */
     Route::get('ads', [AdController::class, 'index']);

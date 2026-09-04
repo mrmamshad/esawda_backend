@@ -19,7 +19,7 @@ class AdsApiTest extends TestCase
         Category::create(['cat_id' => 1, 'cat_order' => 1, 'cat_name' => 'Vehicles', 'slug' => 'vehicles', 'icon' => 'fa-car']);
         SubCategory::create(['sub_cat_id' => 10, 'main_cat_id' => 1, 'sub_cat_name' => 'Cars', 'slug' => 'cars']);
 
-        $u = User::create([
+        $u = User::forceCreate([
             'username' => 'seller1', 'email' => 's1@x.com',
             'password_hash' => Hash::make('x'), 'status' => '1', 'name' => 'Seller One',
             'image' => 'default_user.png',

@@ -17,6 +17,7 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -58,6 +59,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 $e instanceof ModelNotFoundException => ['NOT_FOUND', 'Resource not found.', 404, []],
                 $e instanceof MethodNotAllowedHttpException => ['METHOD_NOT_ALLOWED', 'HTTP method not allowed.', 405, []],
                 $e instanceof ThrottleRequestsException => ['RATE_LIMITED', 'Too many requests.', 429, []],
+                // Unauthenticated non-JSON hits never redirect to a login
+                // page (there is no `login` route) — answer 401 like the
+                // JSON path instead of a 500 RouteNotFoundException.
+                $e instanceof RouteNotFoundException => ['UNAUTHENTICATED', 'Authentication required.', 401, []],
                 $e instanceof HttpException => ['HTTP_ERROR', $e->getMessage() ?: 'HTTP error.', $e->getStatusCode(), []],
                 default => ['SERVER_ERROR', config('app.debug') ? $e->getMessage() : 'Server error.', 500, []],
             };

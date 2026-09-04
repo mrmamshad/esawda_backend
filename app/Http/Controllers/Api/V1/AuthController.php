@@ -92,10 +92,12 @@ class AuthController extends Controller
      * Lightweight guest session — lets a buyer message a seller (or post a
      * quick enquiry) without a full email/password registration.
      *
-     * Reuses an existing user whose phone matches, otherwise creates a fresh
-     * guest account (no real password — a random one is stored so the row can
-     * never be used for a password login). Throttled like the other auth
-     * endpoints to blunt abuse.
+     * SECURITY: passwordless phone reuse must never yield a token for a REAL
+     * (email-registered) account — otherwise anyone knowing a phone number
+     * could impersonate its owner. Existing users WITH an email get 409 and
+     * must use the password login. Only phone-only guest rows (email empty,
+     * created by this same endpoint with an unusable random password) are
+     * reusable. Throttled like the other auth endpoints to blunt abuse.
      */
     public function guestLogin(GuestLoginRequest $request)
     {
@@ -105,6 +107,11 @@ class AuthController extends Controller
 
         /** @var User|null $user */
         $user = User::where('phone', $mobile)->first();
+
+        if ($user && !empty($user->email)) {
+            // Real account — passwordless reuse would be account takeover.
+            return $this->error('ACCOUNT_EXISTS', 'This mobile number is linked to a registered account. Please log in instead.', 409);
+        }
 
         if (!$user) {
             $user = User::forceCreate([
@@ -136,8 +143,12 @@ class AuthController extends Controller
     /**
      * Guest account with a real password — the "Post a Product" sign-up.
      * Buyer enters name + phone + password once, straight from the product
-     * form. Reuses an existing user whose phone matches (idempotent: resets
-     * their password and returns a fresh token), otherwise creates the row.
+     * form. Only creates the row when the phone is NEW.
+     *
+     * SECURITY (account takeover): when the phone already belongs to an
+     * account we return 409 and change NOTHING — the old code reset the
+     * victim's password and handed the attacker a fresh token with no
+     * verification at all. Owners recover via forgot-password / login.
      *
      * New guest accounts get a small free listing quota (guest_ads_quota,
      * admin-tunable) so the first few posts are free. grantGuestAds() is
@@ -152,26 +163,29 @@ class AuthController extends Controller
         /** @var User|null $user */
         $user = User::where('phone', $mobile)->first();
 
-        if (!$user) {
-            $user = User::forceCreate([
-                'username' => $this->uniqueGuestUsername($mobile),
-                'name' => $name,
-                'phone' => $mobile,
-                'password_hash' => Hash::make($data['password']),
-                'status' => '1',
-                'group_id' => 'free',
-                'user_type' => 'user',
-                'image' => 'default_user.png',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-            $this->grantGuestAds($user);
-        } elseif ((string) $user->status === '0') {
-            return $this->error('ACCOUNT_DISABLED', 'This account is disabled.', 403);
+        if ($user) {
+            if ((string) $user->status === '0') {
+                return $this->error('ACCOUNT_DISABLED', 'This account is disabled.', 403);
+            }
+
+            return $this->error('ACCOUNT_EXISTS', 'This mobile number is already registered. Please log in instead.', 409);
         }
 
-        $user->forceFill([
+        $user = User::forceCreate([
+            'username' => $this->uniqueGuestUsername($mobile),
+            'name' => $name,
+            'phone' => $mobile,
             'password_hash' => Hash::make($data['password']),
+            'status' => '1',
+            'group_id' => 'free',
+            'user_type' => 'user',
+            'image' => 'default_user.png',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $this->grantGuestAds($user);
+
+        $user->forceFill([
             'lastactive' => now(),
             'online' => '1',
         ])->save();

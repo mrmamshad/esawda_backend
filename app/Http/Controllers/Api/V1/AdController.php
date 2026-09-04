@@ -6,6 +6,7 @@ use App\Http\Concerns\Filterable;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\AdDetailResource;
 use App\Http\Resources\V1\AdResource;
+use App\Jobs\IncrementAdView;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -155,9 +156,10 @@ class AdController extends Controller
             $ad->setRelation('bundleItems', Post::whereIn('id', $ad->bundle_items)->get());
         }
 
-        // Fire-and-forget view counter (no need to block the response).
+        // Fire-and-forget view counter via queue (no need to block the
+        // response — and no UPDATE row-lock in the reader's path).
         if ($ad->status->value === 'active' && $ad->hide === '0') {
-            Post::where('id', $id)->increment('view');
+            IncrementAdView::dispatch($id);
         }
 
         return $this->ok(new AdDetailResource($ad));

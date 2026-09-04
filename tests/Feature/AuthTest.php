@@ -24,7 +24,7 @@ class AuthTest extends TestCase
 
     public function test_login_with_legacy_password_hash(): void
     {
-        $u = User::create([
+        $u = User::forceCreate([
             'username' => 'testuser',
             'email' => 'test@example.com',
             'password_hash' => Hash::make('secret123'),
@@ -40,7 +40,7 @@ class AuthTest extends TestCase
 
     public function test_login_rejects_wrong_password(): void
     {
-        User::create([
+        User::forceCreate([
             'username' => 'a',
             'email' => 'a@a.com',
             'password_hash' => Hash::make('right'),
@@ -54,7 +54,7 @@ class AuthTest extends TestCase
         $svc = app(AuthService::class);
         $this->assertFalse($svc->emailExists('nobody@nope.com'));
         $this->assertFalse($svc->usernameExists('nobody'));
-        User::create(['username' => 'x', 'email' => 'x@x.com', 'password_hash' => Hash::make('p'), 'status' => '1']);
+        User::forceCreate(['username' => 'x', 'email' => 'x@x.com', 'password_hash' => Hash::make('p'), 'status' => '1']);
         $this->assertTrue($svc->emailExists('x@x.com'));
         $this->assertTrue($svc->usernameExists('x'));
     }

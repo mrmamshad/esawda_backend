@@ -201,7 +201,8 @@ class TransactionalEmailsTest extends TestCase
                 'shop_name' => 'My Shop',
                 'shop_address' => 'Dhaka',
                 'documents' => [
-                    UploadedFile::fake()->create('doc.pdf', 10),
+                    'nid' => UploadedFile::fake()->create('nid.pdf', 10, 'application/pdf'),
+                    'trade_licence' => UploadedFile::fake()->create('trade-licence.pdf', 10, 'application/pdf'),
                 ],
             ])
             ->assertOk();

@@ -4,6 +4,7 @@ namespace App\Http\Concerns;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Query-string → Eloquent filter grammar shared across list endpoints.
@@ -54,10 +55,27 @@ trait Filterable
         }
 
         // ---- Free-text search --------------------------------------------
+        // MySQL: MATCH…AGAINST served by idx_product_fulltext (see
+        // 2026_08_07_000005 migration). Words shorter than ft_min_word_len
+        // (default 4) are invisible to FULLTEXT, so short needles — and all
+        // non-MySQL drivers (sqlite in tests) — fall back to LIKE.
         if ($fullTextCols && ($q = trim((string) $request->query('q', '')))) {
-            $query->where(function ($sub) use ($fullTextCols, $q) {
-                foreach ($fullTextCols as $c) {
-                    $sub->orWhere($c, 'like', "%{$q}%");
+            $useFulltext = DB::getDriverName() === 'mysql'
+                && mb_strlen($q) >= 4;
+
+            $query->where(function ($sub) use ($fullTextCols, $q, $useFulltext) {
+                if ($useFulltext) {
+                    // $fullTextCols is a hardcoded controller whitelist, never
+                    // user input, so interpolating column names is safe; the
+                    // needle itself stays bound.
+                    $sub->whereRaw(
+                        'MATCH('.implode(',', $fullTextCols).') AGAINST(? IN NATURAL LANGUAGE MODE)',
+                        [$q]
+                    );
+                } else {
+                    foreach ($fullTextCols as $c) {
+                        $sub->orWhere($c, 'like', "%{$q}%");
+                    }
                 }
             });
         }
