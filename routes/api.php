@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\V1\PaymentCallbackController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SellerController;
 use App\Http\Controllers\Api\V1\ShopController;
+use App\Http\Controllers\Api\V1\ShopDirectoryController;
 use App\Http\Controllers\Api\V1\SocialAuthController;
 use App\Http\Controllers\Api\V1\SubCategoryController;
 use Illuminate\Support\Facades\Route;
@@ -93,6 +94,10 @@ Route::prefix('v1')->group(function () {
     Route::get('ads/search-suggest', [AdController::class, 'searchSuggest']);
     Route::get('ads/{idSlug}', [AdController::class, 'show'])->where('idSlug', '[0-9]+(-.*)?');
     Route::get('ads/{id}/similar', [AdController::class, 'similar'])->whereNumber('id');
+
+    /* ---- Shops directory (public) -------------------------------------- */
+    Route::get('shop-categories', [ShopDirectoryController::class, 'categories']);
+    Route::get('shops', [ShopDirectoryController::class, 'index']);
 
     /* ---- Sellers (public) --------------------------------------------- */
     Route::get('sellers/{username}', [SellerController::class, 'show']);

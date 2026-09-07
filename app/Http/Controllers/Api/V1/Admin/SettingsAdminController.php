@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Option;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Site-wide settings CRUD. Settings live in the legacy `option` table as
@@ -41,6 +42,9 @@ class SettingsAdminController extends Controller
                 ['option_value' => is_scalar($v) ? (string) $v : json_encode($v)],
             );
         }
+
+        Cache::forget('meta.settings');
+        Cache::forget('home.payload');
 
         return $this->ok(['settings' => Option::pluck('option_value', 'option_name')]);
     }

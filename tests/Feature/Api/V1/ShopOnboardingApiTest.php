@@ -41,6 +41,27 @@ class ShopOnboardingApiTest extends TestCase
             ]);
     }
 
+    public function test_shop_application_rejects_a_category_outside_the_configured_list(): void
+    {
+        Storage::fake('public');
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->post('/api/v1/me/shop/apply', [
+            'owner_name' => 'Rahim Uddin',
+            'owner_phone' => '01700000000',
+            'shop_name' => 'Rahim Shop',
+            'shop_address' => 'Dhaka',
+            'shop_category' => 'Product-only category',
+            'documents' => [
+                'nid' => UploadedFile::fake()->create('nid.pdf', 100, 'application/pdf'),
+                'trade_licence' => UploadedFile::fake()->create('trade.pdf', 100, 'application/pdf'),
+            ],
+        ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonPath('error.code', 'VALIDATION_FAILED')
+            ->assertJsonStructure(['error' => ['fields' => ['shop_category']]]);
+    }
+
     public function test_user_can_open_a_shop_and_receive_seller_access(): void
     {
         // Fake mail: the endpoint queues welcome/admin emails on the sync
