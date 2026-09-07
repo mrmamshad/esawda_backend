@@ -11,18 +11,19 @@ use App\Models\Post;
 use App\Models\Transaction;
 use App\Services\AdMutationService;
 use App\Services\Payment\PaymentManager;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Buyer-initiated checkout endpoints.
  *
- *   POST /api/v1/checkout/plan/{planId}         → SSLCommerz page for a plan purchase
- *   POST /api/v1/checkout/ad-upgrade/{postId}   → SSLCommerz page for an ad boost
+ *   POST /api/v1/checkout/plan/{planId}         → hosted page for a plan purchase
+ *   POST /api/v1/checkout/ad-upgrade/{postId}   → hosted page for an ad boost
  *
  * All routes are authenticated (Sanctum). They persist a `transaction` row
- * so the IPN handler can locate it later, and return the SSLCommerz hosted
- * page URL that the SPA redirects to via `window.location`.
+ * so callbacks can locate it later, and return the configured primary
+ * gateway's hosted page URL for the SPA to open.
  */
 class CheckoutController extends Controller
 {
@@ -329,7 +330,8 @@ class CheckoutController extends Controller
             return !empty($purposeMeta) ? ['meta' => json_encode($purposeMeta)] : [];
         }
 
-        // Validate required fields for dgepay
+        $this->ensureDgePayUatUserAllowed($request);
+
         $validated = $request->validate([
             'policies_accepted' => ['required', 'accepted'],
             'payment_phone' => ['nullable', 'string', 'regex:/^01[3-9]\\d{8}$/'],
@@ -355,5 +357,18 @@ class CheckoutController extends Controller
             'amount_minor' => (int) round($amount * 100),
             'checkout_idempotency_key' => $idempotencyKey,
         ];
+    }
+
+    private function ensureDgePayUatUserAllowed(Request $request): void
+    {
+        $host = strtolower((string) parse_url((string) config('dgepay.base_url'), PHP_URL_HOST));
+        if (!app()->isProduction() || !str_contains($host, 'uat')) {
+            return;
+        }
+
+        $allowed = array_map('intval', (array) config('dgepay.uat_allowed_user_ids', []));
+        if (!in_array((int) $request->user()?->id, $allowed, true)) {
+            throw new AuthorizationException('DGePay UAT checkout is restricted to approved test users.');
+        }
     }
 }

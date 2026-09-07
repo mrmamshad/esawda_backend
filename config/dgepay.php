@@ -7,6 +7,10 @@ return [
     'client_secret' => env('DGEPAY_CLIENT_SECRET'),
     'api_key' => env('DGEPAY_API_KEY'),
     'currency' => env('DGEPAY_CURRENCY', 'BDT'),
+    'uat_allowed_user_ids' => array_values(array_filter(array_map(
+        static fn (string $id): int => (int) trim($id),
+        explode(',', (string) env('DGEPAY_UAT_ALLOWED_USER_IDS', '')),
+    ))),
 
     // Executable PHP/Postman examples use Basic Auth without a JSON body.
     // Keep configurable until DGePay confirms the PDF discrepancy.

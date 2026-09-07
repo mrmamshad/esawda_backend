@@ -109,6 +109,25 @@ class DGePayPaymentFlowTest extends TestCase
         $this->assertDatabaseCount('transaction', 0);
     }
 
+    public function test_production_uat_checkout_is_restricted_to_allowlisted_users(): void
+    {
+        $this->app['env'] = 'production';
+        config(['dgepay.uat_allowed_user_ids' => [999999]]);
+
+        $user = User::factory()->create(['user_type' => 'seller']);
+        $plan = Plan::factory()->create(['monthly_price' => 500]);
+
+        $this->actingAs($user)
+            ->withHeader('Idempotency-Key', 'restricted-uat-checkout')
+            ->postJson("/api/v1/checkout/plan/{$plan->id}", [
+                'policies_accepted' => true,
+                'payment_phone' => '01700000000',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('transaction', 0);
+    }
+
     public function test_amount_mismatch_never_marks_transaction_successful(): void
     {
         $tx = Transaction::create([
