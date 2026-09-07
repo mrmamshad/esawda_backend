@@ -38,6 +38,12 @@ class SSLCommerzGateway extends AbstractGateway
      */
     public function initiate(Transaction $tx): mixed
     {
+        if (!config('payments.gateways.sslcommerz.accept_new', true)) {
+            Log::warning('SSLCommerz initiation blocked because new payments are disabled.');
+
+            return null;
+        }
+
         $storeId = (string) config('sslcommerz.store_id');
         $storePwd = (string) config('sslcommerz.store_password');
         $base = (string) config('sslcommerz.api_domain');
@@ -113,6 +119,10 @@ class SSLCommerzGateway extends AbstractGateway
      */
     public function handleCallback(array $payload): Transaction
     {
+        if (!config('payments.gateways.sslcommerz.accept_callbacks', true)) {
+            throw new \RuntimeException('SSLCommerz callbacks are disabled.');
+        }
+
         $tranId = (string) ($payload['tran_id'] ?? '');
         $valId = (string) ($payload['val_id'] ?? '');
         $status = strtoupper((string) ($payload['status'] ?? ''));

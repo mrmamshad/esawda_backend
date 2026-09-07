@@ -24,6 +24,7 @@ class PaymentManager
      * under App\Services\Payment\Gateways\* and can be re-enabled here.
      */
     protected array $registry = [
+        'dgepay' => Gateways\DGePayGateway::class,
         'sslcommerz' => Gateways\SSLCommerzGateway::class,
 
         // ---- Deprecated (kept for reference) ---------------------------------
@@ -53,12 +54,24 @@ class PaymentManager
         return app($this->registry[$slug]);
     }
 
+    public function primary(): PaymentGatewayInterface
+    {
+        $slug = (string) config('payments.primary', 'sslcommerz');
+        if (!config("payments.gateways.{$slug}.accept_new", false)) {
+            throw new \RuntimeException("Primary payment gateway is not accepting new payments: {$slug}");
+        }
+
+        return $this->get($slug);
+    }
+
     /** @return array<string,string> slug => label for UI selection */
     public function available(): array
     {
         $out = [];
         foreach ($this->registry as $slug => $class) {
-            $out[$slug] = app($class)->label();
+            if (config("payments.gateways.{$slug}.accept_new", false)) {
+                $out[$slug] = app($class)->label();
+            }
         }
 
         return $out;

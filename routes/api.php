@@ -56,6 +56,9 @@ Route::prefix('v1')->group(function () {
     Route::post('payments/sslcommerz/fail', [PaymentCallbackController::class, 'fail']);
     Route::post('payments/sslcommerz/cancel', [PaymentCallbackController::class, 'cancel']);
     Route::post('payments/sslcommerz/ipn', [PaymentCallbackController::class, 'ipn']);
+    Route::get('payments/dgepay/return', [PaymentCallbackController::class, 'dgePayReturn'])
+        ->middleware('throttle:30,1')
+        ->name('payments.dgepay.return');
 
     /* ---- Auth (public) — throttled to blunt brute-force/cred-stuffing -- */
     Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');

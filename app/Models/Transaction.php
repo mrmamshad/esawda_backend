@@ -15,7 +15,11 @@ class Transaction extends Model
 
     protected $casts = [
         'status' => TransactionStatus::class,
+        'amount_minor' => 'integer',
         'fulfilled_at' => 'datetime',
+        'gateway_initiated_at' => 'datetime',
+        'last_verified_at' => 'datetime',
+        'policy_accepted_at' => 'datetime',
     ];
 
     public function seller()

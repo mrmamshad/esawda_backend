@@ -43,10 +43,40 @@ class PaymentCallbackController extends Controller
         return $this->handleAndRedirect($request, expected: 'cancel');
     }
 
+    /** DGePay browser return — always re-verified through its status API. */
+    public function dgePayReturn(Request $request): Response
+    {
+        $tx = null;
+        try {
+            $tx = $this->manager->get('dgepay')->handleCallback([
+                'data' => (string) $request->query('data', ''),
+            ]);
+            if ($tx->status === TransactionStatus::Success) {
+                $this->fulfil($tx);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('DGePay return processing failed', [
+                'transaction_id' => $tx?->id,
+                'error_type' => $e::class,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $frontend = rtrim((string) config('quickad.frontend.url', 'http://localhost:3000'), '/');
+        $status = $tx?->status?->value ?? 'failed';
+        $target = $frontend.'/payment/result'
+            .'?transaction_id='.urlencode((string) ($tx?->id ?? ''))
+            .'&status='.urlencode($status);
+
+        return response('', 302)->header('Location', $target);
+    }
+
     /** IPN — pure server-to-server, JSON reply, no redirect. */
     public function ipn(Request $request)
     {
-        Log::info('SSLCommerz IPN received', $request->all());
+        Log::info('SSLCommerz IPN received', [
+            'tran_id' => (string) $request->input('tran_id', ''),
+        ]);
         $tx = $this->processPayload($request->all());
 
         if ($tx && $tx->status === TransactionStatus::Success) {
@@ -94,7 +124,11 @@ class PaymentCallbackController extends Controller
         try {
             return $this->manager->get('sslcommerz')->handleCallback($payload);
         } catch (\Throwable $e) {
-            Log::error('SSLCommerz callback processing failed: '.$e->getMessage(), $payload);
+            Log::error('SSLCommerz callback processing failed', [
+                'tran_id' => (string) ($payload['tran_id'] ?? ''),
+                'error_type' => $e::class,
+                'error' => $e->getMessage(),
+            ]);
 
             return null;
         }

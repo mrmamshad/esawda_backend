@@ -49,21 +49,23 @@ class CheckoutController extends Controller
             return $this->error('INVALID_PLAN', 'This plan has no price configured.', 422);
         }
 
+        $gateway = $this->manager->primary();
+        $paymentAttrs = $this->paymentAttributes($request, $gateway->slug(), ['cadence' => $cadence], $amount);
         $tx = Transaction::create([
             'seller_id' => $user->id,
             'product_id' => 0,
             'product_name' => 'Plan: '.($plan->name ?? "#{$plan->id}"),
             'plan_id' => $plan->id,
             'amount' => $amount,
-            'transaction_gatway' => 'sslcommerz',
+            'transaction_gatway' => $gateway->slug(),
             'status' => 'pending',
             'purpose' => 'plan',
-            'meta' => json_encode(['cadence' => $cadence]),
             'created_at' => now(),
             'updated_at' => now(),
+            ...$paymentAttrs,
         ]);
 
-        $url = $this->manager->get('sslcommerz')->initiate($tx);
+        $url = $gateway->initiate($tx);
         if (!$url) {
             return $this->error('GATEWAY_INIT_FAILED', 'Could not start the payment session. Please try again.', 502);
         }
@@ -103,20 +105,22 @@ class CheckoutController extends Controller
             return $this->error('NO_UPGRADES_SELECTED', 'Please select at least one upgrade.', 422);
         }
 
+        $gateway = $this->manager->primary();
+        $paymentAttrs = $this->paymentAttributes($request, $gateway->slug(), $data, $amount);
         $tx = Transaction::create([
             'seller_id' => $request->user()->id,
             'product_id' => $post->id,
             'product_name' => 'Ad boost: '.($post->product_name ?? "#{$post->id}"),
             'amount' => $amount,
-            'transaction_gatway' => 'sslcommerz',
+            'transaction_gatway' => $gateway->slug(),
             'status' => 'pending',
             'purpose' => 'ad_upgrade',
-            'meta' => json_encode($data),
             'created_at' => now(),
             'updated_at' => now(),
+            ...$paymentAttrs,
         ]);
 
-        $url = $this->manager->get('sslcommerz')->initiate($tx);
+        $url = $gateway->initiate($tx);
         if (!$url) {
             return $this->error('GATEWAY_INIT_FAILED', 'Could not start the payment session.', 502);
         }
@@ -130,7 +134,7 @@ class CheckoutController extends Controller
     /**
      * POST /checkout/product-purchase/{postId}
      *
-     * "Buy Now" (option B). Buyer pays the full product price via SSLCommerz;
+     * "Buy Now" (option B). Buyer pays the full product price via the primary gateway;
      * on success a real order is created (FulfilTransactionJob) and the
      * listing is marked sold. Option A (plain chat) never hits this endpoint.
      */
@@ -151,18 +155,20 @@ class CheckoutController extends Controller
             return $this->error('NOT_FOR_SALE', 'This product is not available for purchase.', 422);
         }
 
-        DB::transaction(function () use ($post, $buyer, $amount, &$tx, &$order) {
+        $gateway = $this->manager->primary();
+        $paymentAttrs = $this->paymentAttributes($request, $gateway->slug(), ['buyer_id' => $buyer->id, 'seller_id' => $post->user_id], $amount);
+        DB::transaction(function () use ($post, $buyer, $amount, $gateway, $paymentAttrs, &$tx, &$order) {
             $tx = Transaction::create([
                 'seller_id' => $buyer->id,
                 'product_id' => $post->id,
                 'product_name' => 'Purchase: '.($post->product_name ?? "#{$post->id}"),
                 'amount' => $amount,
-                'transaction_gatway' => 'sslcommerz',
+                'transaction_gatway' => $gateway->slug(),
                 'status' => 'pending',
                 'purpose' => 'product_purchase',
-                'meta' => json_encode(['buyer_id' => $buyer->id, 'seller_id' => $post->user_id]),
                 'created_at' => now(),
                 'updated_at' => now(),
+                ...$paymentAttrs,
             ]);
 
             $order = Order::create([
@@ -176,7 +182,7 @@ class CheckoutController extends Controller
             ]);
         });
 
-        $url = $this->manager->get('sslcommerz')->initiate($tx);
+        $url = $gateway->initiate($tx);
         if (!$url) {
             return $this->error('GATEWAY_INIT_FAILED', 'Could not start the payment session.', 502);
         }
@@ -216,6 +222,9 @@ class CheckoutController extends Controller
             return $this->error('INVALID_LISTING_PRICE', 'Paid listing price is not configured.', 422);
         }
 
+        $gateway = $this->manager->primary();
+        $paymentAttrs = $this->paymentAttributes($request, $gateway->slug(), [], $amount);
+
         $post = $this->ads->create(
             $request->user()->id,
             $request->validated(),
@@ -233,14 +242,15 @@ class CheckoutController extends Controller
             'product_id' => $post->id,
             'product_name' => 'Paid listing: '.$post->product_name,
             'amount' => $amount,
-            'transaction_gatway' => 'sslcommerz',
+            'transaction_gatway' => $gateway->slug(),
             'status' => 'pending',
             'purpose' => 'paid_listing',
             'created_at' => now(),
             'updated_at' => now(),
+            ...$paymentAttrs,
         ]);
 
-        $url = $this->manager->get('sslcommerz')->initiate($tx);
+        $url = $gateway->initiate($tx);
         if (!$url) {
             $tx->forceFill(['status' => 'failed', 'updated_at' => now()])->save();
             $post->forceFill(['status' => 'removed', 'hide' => '1', 'updated_at' => now()])->save();
@@ -285,21 +295,23 @@ class CheckoutController extends Controller
         }
 
         // Store ad data in transaction meta - will be created after payment
+        $gateway = $this->manager->primary();
+        $paymentAttrs = $this->paymentAttributes($request, $gateway->slug(), $data['ad_data'], $amount);
         $tx = Transaction::create([
             'seller_id' => $request->user()->id,
             'product_id' => 0, // not created yet
             'product_name' => 'Ad Posting: '.$data['ad_data']['title'],
             'plan_id' => $plan->id,
             'amount' => $amount,
-            'transaction_gatway' => 'sslcommerz',
+            'transaction_gatway' => $gateway->slug(),
             'status' => 'pending',
             'purpose' => 'ad_post',
-            'meta' => json_encode($data['ad_data']),
             'created_at' => now(),
             'updated_at' => now(),
+            ...$paymentAttrs,
         ]);
 
-        $url = $this->manager->get('sslcommerz')->initiate($tx);
+        $url = $gateway->initiate($tx);
 
         if (!$url) {
             return $this->error('GATEWAY_INIT_FAILED', 'Could not start payment session. Please try again.', 502);
@@ -309,5 +321,39 @@ class CheckoutController extends Controller
             'transaction_id' => $tx->id,
             'gateway_url' => $url,
         ]);
+    }
+
+    private function paymentAttributes(Request $request, string $gatewaySlug, array $purposeMeta = [], float $amount = 0): array
+    {
+        if ($gatewaySlug !== 'dgepay') {
+            return !empty($purposeMeta) ? ['meta' => json_encode($purposeMeta)] : [];
+        }
+
+        // Validate required fields for dgepay
+        $validated = $request->validate([
+            'policies_accepted' => ['required', 'accepted'],
+            'payment_phone' => ['nullable', 'string', 'regex:/^01[3-9]\\d{8}$/'],
+        ]);
+
+        $idempotencyKey = trim((string) $request->header('Idempotency-Key', ''));
+        validator(
+            ['idempotency_key' => $idempotencyKey],
+            ['idempotency_key' => ['required', 'string', 'max:100', 'unique:transaction,checkout_idempotency_key']],
+        )->validate();
+
+        // Prepare purpose meta with payment details
+        $purposeMeta['_payment'] = array_filter([
+            'phone' => $validated['payment_phone'] ?? null,
+            'policy_accepted' => true,
+        ]);
+
+        return [
+            'meta' => json_encode($purposeMeta),
+            'policy_accepted_at' => now(),
+            'policy_version' => (string) config('payments.policy_version', '1.0'),
+            'currency' => (string) config('dgepay.currency', 'BDT'),
+            'amount_minor' => (int) round($amount * 100),
+            'checkout_idempotency_key' => $idempotencyKey,
+        ];
     }
 }

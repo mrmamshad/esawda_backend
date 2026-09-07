@@ -33,8 +33,9 @@ class FulfilTransactionJob implements ShouldQueue
     {
         /** @var Transaction|null $tx */
         $tx = null;
+        $didFulfil = false;
 
-        DB::transaction(function () use (&$tx): void {
+        DB::transaction(function () use (&$tx, &$didFulfil): void {
             /** @var Transaction|null $tx */
             $tx = Transaction::query()->lockForUpdate()->find($this->transactionId);
 
@@ -63,9 +64,10 @@ class FulfilTransactionJob implements ShouldQueue
             }
 
             $tx->forceFill(['fulfilled_at' => now(), 'updated_at' => now()])->save();
+            $didFulfil = true;
         }, 3);
 
-        if ($tx) {
+        if ($tx && $didFulfil) {
             $this->dispatchEmails($tx);
         }
     }
