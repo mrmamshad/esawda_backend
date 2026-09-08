@@ -14,6 +14,24 @@ class Category extends Model
 
     protected $guarded = [];
 
+    protected $appends = ['picture_url'];
+
+    public function getPictureUrlAttribute(): ?string
+    {
+        $picture = (string) ($this->picture ?? '');
+        if ($picture === '') {
+            return null;
+        }
+        if (preg_match('~^https?://~i', $picture)) {
+            return $picture;
+        }
+
+        $relative = ltrim($picture, '/');
+        $path = str_starts_with($relative, 'site/') ? $relative : 'site/'.$relative;
+
+        return rtrim(config('app.url'), '/').'/storage/'.$path;
+    }
+
     public function subCategories()
     {
         return $this->hasMany(SubCategory::class, 'main_cat_id', 'cat_id');
