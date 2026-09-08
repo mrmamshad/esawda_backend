@@ -18,6 +18,7 @@ class ProductPurchaseTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['payments.product_purchases_enabled' => true]);
 
         \DB::table('catagory_main')->insert([
             'cat_id' => 1,
@@ -43,6 +44,22 @@ class ProductPurchaseTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ], $overrides));
+    }
+
+    public function test_product_purchase_endpoint_is_gone_when_online_sales_are_disabled(): void
+    {
+        config(['payments.product_purchases_enabled' => false]);
+        $seller = User::factory()->create();
+        $buyer = User::factory()->create();
+        $post = $this->activePost($seller->id);
+
+        $this->actingAs($buyer)
+            ->postJson("/api/v1/checkout/product-purchase/{$post->id}")
+            ->assertStatus(410)
+            ->assertJsonPath('error.code', 'PRODUCT_PURCHASE_DISABLED');
+
+        $this->assertDatabaseCount('transaction', 0);
+        $this->assertDatabaseCount('orders', 0);
     }
 
     public function test_product_purchase_creates_order_and_transaction(): void

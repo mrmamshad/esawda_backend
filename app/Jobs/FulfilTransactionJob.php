@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Enums\PostStatus;
 use App\Enums\TransactionStatus;
 use App\Models\Order;
 use App\Models\Plan;
@@ -107,6 +108,10 @@ class FulfilTransactionJob implements ShouldQueue
                     break;
 
                 case 'ad_upgrade':
+                    $upgradedPost = Post::find($tx->product_id);
+                    if ($upgradedPost && !empty($this->meta($tx)['held_post'])) {
+                        $mail->pendingAdToAdmin($upgradedPost->load('user'));
+                    }
                     $mail->transactionToAdmin($tx);
                     break;
 
@@ -170,6 +175,12 @@ class FulfilTransactionJob implements ShouldQueue
             'transaction_id' => $tx->id,
             'updated_at' => now(),
         ])->save();
+
+        // A listing held out of review until its boost was paid is released
+        // back into the review queue now that payment settled.
+        if (!empty($flags['held_post']) && $post->status === PostStatus::Draft) {
+            $post->forceFill(['status' => PostStatus::Pending, 'hide' => '0', 'updated_at' => now()])->save();
+        }
     }
 
     private function fulfilAdPost(Transaction $tx): void

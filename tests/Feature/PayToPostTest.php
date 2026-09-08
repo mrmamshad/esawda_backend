@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Enums\PostStatus;
+use App\Enums\TransactionStatus;
 use App\Jobs\FulfilTransactionJob;
 use App\Jobs\RevalidateFrontendJob;
 use App\Models\Plan;
@@ -468,5 +470,60 @@ class PayToPostTest extends TestCase
 
         $this->assertSame($tx->id, $result->id);
         $this->assertSame('failed', $result->status->value);
+    }
+
+    public function test_held_post_stays_draft_until_boost_payment_then_released_to_review(): void
+    {
+        Http::fake([
+            '*/gwprocess/v4/api.php' => Http::response([
+                'status' => 'SUCCESS',
+                'GatewayPageURL' => 'https://sandbox.sslcommerz.com/EasyCheckOut/test-session',
+            ]),
+        ]);
+
+        $user = User::factory()->create();
+        $ad = Post::create([
+            'user_id' => $user->id,
+            'product_name' => 'Hold Me',
+            'description' => 'Listing awaiting its boost payment',
+            'price' => 100,
+            'category' => 1,
+            'condition' => 'used',
+            'status' => 'pending',
+            'hide' => '0',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->postJson("/api/v1/checkout/ad-upgrade/{$ad->id}", [
+                'highlight' => true,
+                'hold_for_payment' => true,
+            ]);
+
+        $response->assertOk()
+            ->assertJsonStructure(['data' => ['transaction_id', 'gateway_url']]);
+
+        // While the boost is unpaid the listing must NOT sit in review —
+        // it is a hidden draft invisible to admin and public.
+        $ad->refresh();
+        $this->assertSame(PostStatus::Draft, $ad->status);
+        $this->assertSame('1', $ad->hide);
+
+        $tx = Transaction::where('product_id', $ad->id)
+            ->where('purpose', 'ad_upgrade')->latest('id')->first();
+        $this->assertNotNull($tx);
+        $this->assertTrue(!empty(json_decode((string) $tx->meta, true)['held_post']));
+
+        // Payment settles → release into the review queue with the boost.
+        $tx->forceFill(['status' => TransactionStatus::Success, 'updated_at' => now()])->save();
+
+        FulfilTransactionJob::dispatchSync($tx->id);
+
+        $ad->refresh();
+        $this->assertSame(PostStatus::Pending, $ad->status);
+        $this->assertSame('0', $ad->hide);
+        $this->assertSame('1', $ad->highlight);
+        $this->assertTrue((bool) $ad->paid);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\PostStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\StoreAdRequest;
 use App\Models\Option;
@@ -68,7 +69,7 @@ class CheckoutController extends Controller
 
         $url = $gateway->initiate($tx);
         if (!$url) {
-            return $this->error('GATEWAY_INIT_FAILED', 'Could not start the payment session. Please try again.', 502);
+            return $this->error('GATEWAY_INIT_FAILED', 'Could not start the payment session.', 502);
         }
 
         return $this->ok([
@@ -84,6 +85,7 @@ class CheckoutController extends Controller
             'featured' => ['sometimes', 'boolean'],
             'urgent' => ['sometimes', 'boolean'],
             'highlight' => ['sometimes', 'boolean'],
+            'hold_for_payment' => ['sometimes', 'boolean'],
         ]);
 
         $post = Post::findOrFail($postId);
@@ -106,6 +108,12 @@ class CheckoutController extends Controller
             return $this->error('NO_UPGRADES_SELECTED', 'Please select at least one upgrade.', 422);
         }
 
+        $holdForPayment = (bool) ($data['hold_for_payment'] ?? false);
+        unset($data['hold_for_payment']);
+        if ($holdForPayment) {
+            $data['held_post'] = true;
+        }
+
         $gateway = $this->manager->primary();
         $paymentAttrs = $this->paymentAttributes($request, $gateway->slug(), $data, $amount);
         $tx = Transaction::create([
@@ -126,6 +134,13 @@ class CheckoutController extends Controller
             return $this->error('GATEWAY_INIT_FAILED', 'Could not start the payment session.', 502);
         }
 
+        // New listing awaiting its first boost: hold it out of the admin
+        // review queue until the boost is actually paid. It becomes a hidden
+        // draft here and FulfilTransactionJob resubmits it on success.
+        if ($holdForPayment && $post->status === PostStatus::Pending) {
+            $post->forceFill(['status' => PostStatus::Draft, 'hide' => '1', 'updated_at' => now()])->save();
+        }
+
         return $this->ok([
             'transaction_id' => $tx->id,
             'gateway_url' => $url,
@@ -141,6 +156,14 @@ class CheckoutController extends Controller
      */
     public function productPurchase(int $postId, Request $request)
     {
+        if (!config('payments.product_purchases_enabled', false)) {
+            return $this->error(
+                'PRODUCT_PURCHASE_DISABLED',
+                'Online product purchases are not available. Please contact the seller directly.',
+                410,
+            );
+        }
+
         $post = Post::query()
             ->active()
             ->where('hide', '0')

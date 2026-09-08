@@ -5,6 +5,9 @@ return [
     // explicitly switches the production environment after UAT approval.
     'primary' => env('PAYMENT_PRIMARY_GATEWAY', 'sslcommerz'),
     'policy_version' => env('PAYMENT_POLICY_VERSION', '2026-09-01'),
+    // Classified-marketplace default: retain legacy order fulfilment/history,
+    // but do not accept new online product purchases unless explicitly enabled.
+    'product_purchases_enabled' => env('PRODUCT_PURCHASES_ENABLED', false),
 
     'gateways' => [
         'dgepay' => [
