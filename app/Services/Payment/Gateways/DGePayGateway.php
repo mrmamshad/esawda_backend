@@ -124,9 +124,13 @@ class DGePayGateway extends AbstractGateway
         }
 
         $statusCode = (string) ($data['status_code'] ?? $response['status_code'] ?? '');
+        // Live UAT observation: DGePay returns 8 with message
+        // "TRANSACTION CANCELLED" when the payer abandons the hosted page.
+        // Unmapped codes must fail closed as pending (reconciliation keeps
+        // retrying until the gateway settles), never silently succeed.
         $mapped = match ($statusCode) {
             '3' => TransactionStatus::Success,
-            '4', '5' => TransactionStatus::Failed,
+            '4', '5', '8' => TransactionStatus::Failed,
             '6' => TransactionStatus::Refunded,
             default => TransactionStatus::Pending,
         };
