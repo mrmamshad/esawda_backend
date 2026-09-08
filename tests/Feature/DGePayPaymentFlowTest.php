@@ -154,4 +154,71 @@ class DGePayPaymentFlowTest extends TestCase
         $this->expectException(DGePayException::class);
         app(DGePayGateway::class)->verify($tx);
     }
+
+    public function test_cancelled_payment_settles_from_browser_return_even_when_status_endpoint_rejects(): void
+    {
+        $tx = Transaction::create([
+            'seller_id' => User::factory()->create()->id,
+            'amount' => 200,
+            'amount_minor' => 20000,
+            'currency' => 'BDT',
+            'transaction_gatway' => 'dgepay',
+            'payment_id' => 'ES-TEST-CANCELLED',
+            'status' => 'pending',
+            'purpose' => 'ad_upgrade',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Live-observed behaviour: the status endpoint rejects cancelled
+        // transactions, so the server-to-server verify throws.
+        Http::fakeSequence()
+            ->push(['data' => ['access_token' => 'jwt-test', 'expiry_time' => 3600]])
+            ->push(['success' => 0, 'message' => 'Transaction not found']);
+
+        $returnData = app(DGePayCrypto::class)->encrypt(
+            json_encode([
+                'unique_txn_id' => $tx->payment_id,
+                'status_code' => '8',
+                'message' => 'TRANSACTION CANCELLED',
+            ]),
+            '0123456789abcdef',
+        );
+
+        $this->get('/api/v1/payments/dgepay/return?data='.urlencode($returnData))
+            ->assertRedirect("http://localhost:3000/payment/result?transaction_id={$tx->id}&status=failed");
+
+        $this->assertSame('failed', $tx->fresh()->status->value);
+        $this->assertSame('8', (string) $tx->fresh()->gateway_status_code);
+    }
+
+    public function test_status_poll_verifies_pending_transaction_with_gateway(): void
+    {
+        $tx = Transaction::create([
+            'seller_id' => User::factory()->create()->id,
+            'amount' => 100,
+            'amount_minor' => 10000,
+            'currency' => 'BDT',
+            'transaction_gatway' => 'dgepay',
+            'payment_id' => 'ES-TEST-POLL',
+            'status' => 'pending',
+            'purpose' => 'ad_upgrade',
+            'gateway_initiated_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Http::fakeSequence()
+            ->push(['data' => ['access_token' => 'jwt-test', 'expiry_time' => 3600]])
+            ->push(['data' => [
+                'unique_txn_id' => $tx->payment_id,
+                'status_code' => '8',
+                'message' => 'TRANSACTION CANCELLED',
+            ]]);
+
+        $this->actingAs(User::find($tx->seller_id))
+            ->getJson("/api/v1/checkout/transactions/{$tx->id}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'failed');
+    }
 }

@@ -92,8 +92,26 @@ class DGePayGateway extends AbstractGateway
         );
 
         // Decrypted browser data is only a signal; the server-to-server status
-        // endpoint is always authoritative.
-        $this->verify($tx);
+        // endpoint is authoritative. But the status endpoint rejects some
+        // terminal states (e.g. cancelled at the wallet step), so fall back to
+        // the encrypted return payload — it is authenticated by our shared
+        // secret and can only refer to this transaction.
+        try {
+            $this->verify($tx);
+        } catch (DGePayException $e) {
+            $fallbackCode = (string) ($data['status_code'] ?? '');
+            if ($fallbackCode === '') {
+                throw $e;
+            }
+
+            Log::warning('DGePay status check rejected; settling from browser return data', [
+                'transaction_id' => $tx->id,
+                'status_code' => $fallbackCode,
+                'status_error' => $e->getMessage(),
+            ]);
+            $this->applyStatus($tx, $data, $fallbackCode);
+        }
+
         $event->forceFill([
             'status_code' => $tx->fresh()->gateway_status_code,
             'processed_at' => now(),
@@ -124,6 +142,22 @@ class DGePayGateway extends AbstractGateway
         }
 
         $statusCode = (string) ($data['status_code'] ?? $response['status_code'] ?? '');
+
+        $this->applyStatus($tx, $data, $statusCode);
+
+        return $tx->fresh()->status === TransactionStatus::Success;
+    }
+
+    private function applyStatus(Transaction $tx, array $data, string $statusCode): void
+    {
+        if (isset($data['amount'])) {
+            $paidMinor = (int) round((float) $data['amount'] * 100);
+            $expectedMinor = (int) ($tx->amount_minor ?: round((float) $tx->amount * 100));
+            if ($paidMinor !== $expectedMinor) {
+                throw new DGePayException('DGePay status amount did not match the local transaction.');
+            }
+        }
+
         // Live UAT observation: DGePay returns 8 with message
         // "TRANSACTION CANCELLED" when the payer abandons the hosted page.
         // Unmapped codes must fail closed as pending (reconciliation keeps
@@ -160,8 +194,6 @@ class DGePayGateway extends AbstractGateway
                 'updated_at' => now(),
             ])->save();
         }, 3);
-
-        return $tx->fresh()->status === TransactionStatus::Success;
     }
 
     private function payload(Transaction $tx): array

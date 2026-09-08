@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\PostStatus;
+use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\StoreAdRequest;
+use App\Jobs\FulfilTransactionJob;
 use App\Models\Option;
 use App\Models\Order;
 use App\Models\Plan;
@@ -14,7 +16,9 @@ use App\Services\AdMutationService;
 use App\Services\Payment\PaymentManager;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Buyer-initiated checkout endpoints.
@@ -225,6 +229,27 @@ class CheckoutController extends Controller
             ->where('seller_id', $request->user()->id)
             ->firstOrFail();
 
+        // While the gateway has not settled yet, ask it directly so a
+        // cancelled/failed wallet payment reaches the browser without waiting
+        // for the 5-minute reconciliation job. Never let a verification
+        // hiccup break the poll — the row just stays pending. Rate-limit to
+        // one gateway call per 10s while the browser polls every 2s.
+        if ($tx->status === TransactionStatus::Pending && $tx->gateway_initiated_at !== null
+            && Cache::add("checkout:poll-verify:{$tx->id}", true, 10)) {
+            try {
+                $verified = $this->manager->get($tx->transaction_gatway)->verify($tx);
+                if ($verified && $tx->fresh()->status === TransactionStatus::Success) {
+                    $this->fulfil($tx->fresh());
+                }
+                $tx = $tx->fresh() ?? $tx;
+            } catch (\Throwable $e) {
+                Log::warning('Checkout status poll verification failed', [
+                    'transaction_id' => $tx->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return $this->ok([
             'id' => $tx->id,
             'status' => $tx->status?->value ?? 'pending',
@@ -235,6 +260,20 @@ class CheckoutController extends Controller
             'post_id' => $tx->product_id ?? null,
             'created_at' => (string) $tx->created_at,
         ]);
+    }
+
+    /** Apply success side-effects when the poll is what first settles a payment. */
+    private function fulfil(Transaction $tx): void
+    {
+        try {
+            FulfilTransactionJob::dispatchSync($tx->id);
+        } catch (\Throwable $e) {
+            Log::critical('Poll-time payment fulfilment failed; queued for retry', [
+                'transaction_id' => $tx->id,
+                'error' => $e->getMessage(),
+            ]);
+            FulfilTransactionJob::dispatch($tx->id);
+        }
     }
 
     /** Pay per listing without consuming a subscription slot. */
