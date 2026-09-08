@@ -32,7 +32,7 @@ class StoreAdRequest extends FormRequest
             'country' => ['nullable', 'string', 'max:50'],
             'lat' => ['nullable', 'numeric', 'between:-90,90'],
             'lng' => ['nullable', 'numeric', 'between:-180,180'],
-            'images' => ['nullable', 'array', 'max:8'],
+            'images' => ['nullable', 'array', 'max:4'],
             'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'custom' => ['nullable', 'array'],   // { field_id: value }
             'bundle_items' => ['nullable', 'array', 'min:1', 'max:20'],

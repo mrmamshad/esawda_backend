@@ -10,6 +10,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Create/update logic for classified ads, isolated so the controller stays
@@ -207,10 +208,17 @@ class AdMutationService
         }
 
         $existing = $append ? $this->currentImages($post) : [];
-        foreach ($files as $file) {
-            if (!$file instanceof UploadedFile || !$file->isValid()) {
-                continue;
-            }
+        $validFiles = array_values(array_filter(
+            $files,
+            static fn ($file): bool => $file instanceof UploadedFile && $file->isValid(),
+        ));
+        if (count($existing) + count($validFiles) > 4) {
+            throw ValidationException::withMessages([
+                'images' => ['A product can have a maximum of 4 images in total.'],
+            ]);
+        }
+
+        foreach ($validFiles as $file) {
             $name = 'ad_'.$post->id.'_'.Str::random(10).'.'.$file->getClientOriginalExtension();
             $file->storeAs('products', $name, 'public');
             $existing[] = $name;

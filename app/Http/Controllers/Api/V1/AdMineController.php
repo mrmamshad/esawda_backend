@@ -115,7 +115,7 @@ class AdMineController extends Controller
 
     public function addImages(int $id, Request $request)
     {
-        $request->validate(['images' => ['required', 'array', 'max:8'], 'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120']]);
+        $request->validate(['images' => ['required', 'array', 'min:1', 'max:4'], 'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120']]);
         $post = Post::findOrFail($id);
         $this->authorize('update', $post);
         $this->svc->update($post, [], (array) $request->file('images', []));

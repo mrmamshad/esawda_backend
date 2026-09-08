@@ -36,7 +36,7 @@ class UpdateAdRequest extends FormRequest
             'country' => ['sometimes', 'nullable', 'string', 'max:50'],
             'lat' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
             'lng' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
-            'images' => ['sometimes', 'array', 'max:8'],
+            'images' => ['sometimes', 'array', 'max:4'],
             'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'custom' => ['sometimes', 'array'],
         ];
