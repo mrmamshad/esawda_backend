@@ -25,9 +25,26 @@ class PlanAdminController extends Controller
             'recommended' => ['nullable', 'boolean'],
             'badge' => ['nullable', 'string', 'max:60'],
             'status' => ['nullable', 'in:0,1'],
+            // Zero-price promo plans (Early Bird) activate without a gateway.
+            'is_free' => ['nullable', 'boolean'],
+            'ads_limit' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'featured_ads' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'duration_days' => ['nullable', 'integer', 'min:1', 'max:3650'],
         ]);
 
-        return $this->created(Plan::create($data + ['status' => $data['status'] ?? '1']));
+        $settings = [];
+        foreach (['ads_limit', 'featured_ads', 'duration_days'] as $key) {
+            if (isset($data[$key])) {
+                $settings[$key] = (int) $data[$key];
+            }
+        }
+        unset($data['ads_limit'], $data['featured_ads'], $data['duration_days']);
+
+        return $this->created(Plan::create($data + [
+            'status' => $data['status'] ?? '1',
+            'settings' => json_encode($settings),
+            'date' => now(),
+        ]));
     }
 
     public function show(int $id)
@@ -48,7 +65,23 @@ class PlanAdminController extends Controller
             'recommended' => ['sometimes', 'boolean'],
             'badge' => ['sometimes', 'nullable', 'string', 'max:60'],
             'status' => ['sometimes', 'in:0,1'],
+            'is_free' => ['sometimes', 'boolean'],
+            'ads_limit' => ['sometimes', 'integer', 'min:0', 'max:100000'],
+            'featured_ads' => ['sometimes', 'integer', 'min:0', 'max:100000'],
+            'duration_days' => ['sometimes', 'integer', 'min:1', 'max:3650'],
         ]);
+
+        $settings = is_array($plan->settings)
+            ? $plan->settings
+            : (json_decode((string) $plan->settings, true) ?: []);
+        foreach (['ads_limit', 'featured_ads', 'duration_days'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $settings[$key] = (int) $data[$key];
+                unset($data[$key]);
+            }
+        }
+        $data['settings'] = json_encode($settings);
+
         $plan->fill($data)->save();
 
         return $this->ok($plan);

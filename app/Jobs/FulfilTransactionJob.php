@@ -159,6 +159,26 @@ class FulfilTransactionJob implements ShouldQueue
         ])->save();
     }
 
+    /**
+     * Immediate activation for zero-price plans (Early Bird) — no payment,
+     * no transaction row. Sets a fixed validity window so the promo can't
+     * stack forever, and grants the plan's configured quota.
+     */
+    public static function fulfilPlanNow(User $user, Plan $plan, string $cadence = 'monthly'): void
+    {
+        $settings = is_array($plan->settings)
+            ? $plan->settings
+            : (json_decode((string) $plan->settings, true) ?: []);
+        $days = (int) ($settings['duration_days'] ?? 30);
+        $user->forceFill([
+            'group_id' => $plan->name ?? $user->group_id,
+            'plan_id' => $plan->id,
+            'plan_expires_at' => now()->addDays($days > 0 ? $days : 30),
+            'ads_remaining' => (int) ($settings['ads_limit'] ?? 10),
+            'updated_at' => now(),
+        ])->save();
+    }
+
     private function fulfilAdUpgrade(Transaction $tx): void
     {
         $post = Post::find($tx->product_id);

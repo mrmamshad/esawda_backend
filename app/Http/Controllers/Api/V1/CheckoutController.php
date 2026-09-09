@@ -52,6 +52,18 @@ class CheckoutController extends Controller
             ? ($plan->annual_price ?? $plan->price ?? 0)
             : ($plan->monthly_price ?? $plan->price ?? 0));
 
+        // Zero-price promos (Early Bird) activate instantly — no gateway,
+        // no transaction row. Fulfilment runs inline exactly once.
+        if ((int) ($plan->is_free ?? 0) === 1 || $amount <= 0) {
+            FulfilTransactionJob::fulfilPlanNow($user, $plan, $cadence);
+
+            return $this->ok([
+                'transaction_id' => 0,
+                'gateway_url' => '/shop?activated=early-bird',
+                'free_activation' => true,
+            ]);
+        }
+
         if ($amount <= 0) {
             return $this->error('INVALID_PLAN', 'This plan has no price configured.', 422);
         }

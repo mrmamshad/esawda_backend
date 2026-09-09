@@ -13,6 +13,7 @@ class PlanResource extends BaseResource
             'monthly_price' => (float) $this->monthly_price,
             'annual_price' => (float) $this->annual_price,
             'lifetime_price' => (float) $this->lifetime_price,
+            'is_free' => (int) ($this->is_free ?? 0) === 1,
             'recommended' => $this->recommended === 'yes',
             'settings' => $this->settings ? (json_decode($this->settings, true) ?: $this->settings) : null,
             'active' => (int) $this->status === 1,
