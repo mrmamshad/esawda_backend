@@ -31,10 +31,16 @@ class AuthController extends Controller
     {
         $data = $request->validated();
 
+        // One account per mobile number — same rule as the guest flow, so a
+        // phone can never end up owning two passwords.
+        if (User::where('phone', $data['phone'])->exists()) {
+            return $this->error('ACCOUNT_EXISTS', 'This mobile number is already registered. Please log in instead.', 409);
+        }
+
         $user = User::forceCreate([
-            'username' => $data['username'],
+            'username' => !empty($data['username']) ? $data['username'] : $this->uniqueGuestUsername($data['phone']),
             'email' => $data['email'],
-            'name' => $data['name'] ?? $data['username'],
+            'name' => $data['name'] ?? $data['username'] ?? $data['phone'],
             'phone' => $data['phone'] ?? null,
             'password_hash' => Hash::make($data['password']),
             'status' => '1',
