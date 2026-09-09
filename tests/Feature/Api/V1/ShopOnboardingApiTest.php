@@ -120,4 +120,28 @@ class ShopOnboardingApiTest extends TestCase
         $this->assertSame(0, (int) $user->ads_remaining);
         $this->assertNull($user->plan_expires_at);
     }
+
+    public function test_shop_application_is_rejected_when_account_already_has_a_shop(): void
+    {
+        Mail::fake();
+        Storage::fake('public');
+
+        $user = User::factory()->create(['user_type' => 'seller', 'shop_name' => 'First Shop']);
+        Sanctum::actingAs($user);
+
+        $this->post('/api/v1/me/shop/apply', [
+            'owner_name' => 'Rahim Uddin',
+            'owner_phone' => '01700000000',
+            'shop_name' => 'Second Shop',
+            'shop_address' => 'Dhanmondi, Dhaka',
+            'documents' => [
+                'nid' => UploadedFile::fake()->create('nid.pdf', 200, 'application/pdf'),
+                'trade_licence' => UploadedFile::fake()->create('trade-licence.pdf', 200, 'application/pdf'),
+            ],
+        ], ['Accept' => 'application/json'])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'SHOP_ALREADY_OPEN');
+
+        $this->assertSame('First Shop', $user->fresh()->shop_name);
+    }
 }

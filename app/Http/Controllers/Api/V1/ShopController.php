@@ -52,6 +52,12 @@ class ShopController extends Controller
 
         $user = $request->user();
 
+        // One shop per account — re-applying would silently overwrite the
+        // existing shop identity, so stop with a clear message instead.
+        if ($user->isShop()) {
+            return $this->error('SHOP_ALREADY_OPEN', 'This account already has a shop.', 409);
+        }
+
         // Store each verification document under its own labelled key so the
         // record is self-describing (e.g. { nid: ..., trade_licence: ... }).
         $docPaths = [];
