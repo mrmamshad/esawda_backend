@@ -189,7 +189,7 @@ class DGePayGateway extends AbstractGateway
                 'gateway_transaction_id' => $data['txn_id'] ?? null,
                 'gateway_transaction_number' => $data['txn_number'] ?? null,
                 'gateway_third_party_transaction_number' => $data['third_party_txn_number'] ?? null,
-                'transaction_method' => isset($data['payment_method']) ? Str::limit((string) $data['payment_method'], 20, '') : null,
+                'transaction_method' => isset($data['payment_method']) ? Str::limit((string) $data['payment_method'], 60, '') : null,
                 'last_verified_at' => now(),
                 'updated_at' => now(),
             ])->save();

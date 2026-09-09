@@ -16,7 +16,7 @@ class TransactionAdminController extends Controller
 
     public function index(Request $request)
     {
-        $q = Transaction::query()->with('seller:id,username,email');
+        $q = Transaction::query()->with('seller:id,username,name,email');
 
         if ($s = $request->query('status')) {
             $q->where('status', $s);
