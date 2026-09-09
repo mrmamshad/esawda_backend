@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources\V1;
 
+use App\Services\PostingPolicy;
+
 /**
  * Public-safe view of the current user (self). Includes contact info
  * and social handles that the profile editor needs.
@@ -26,6 +28,8 @@ class UserResource extends BaseResource
             'plan_active' => !empty($this->plan_expires_at) && $this->plan_expires_at->isFuture(),
             'plan_expires_at' => optional($this->plan_expires_at)->toIso8601String(),
             'ads_remaining' => (int) $this->ads_remaining,
+            'post_policy' => (string) ($this->post_policy ?? 'inherit'),
+            'can_post_free' => PostingPolicy::canPostFree($this->resource),
             'shop_name' => $this->shop_name,
             'shop_category' => $this->shop_category,
             'shop_description' => $this->shop_description,

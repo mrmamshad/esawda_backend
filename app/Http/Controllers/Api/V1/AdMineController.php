@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\AdMutationService;
 use App\Services\AdStatsService;
 use App\Services\Mail\MailService;
+use App\Services\PostingPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -47,7 +48,7 @@ class AdMineController extends Controller
 
             // Bundles group existing active products, so they are free to create
             // and do not consume subscription listing slots.
-            if (!$isBundle && !$this->canPostFree($user)) {
+            if (!$isBundle && !PostingPolicy::canPostFree($user)) {
                 return null;
             }
 
@@ -57,7 +58,7 @@ class AdMineController extends Controller
                 (array) $request->file('images', [])
             );
 
-            if (!$isBundle) {
+            if (!$isBundle && PostingPolicy::consumesQuota($user)) {
                 $user->forceFill([
                     'ads_remaining' => (int) $user->ads_remaining - 1,
                     'updated_at' => now(),
@@ -68,10 +69,14 @@ class AdMineController extends Controller
         });
 
         if (!$post) {
+            $blocked = PostingPolicy::isBlocked($request->user());
+
             return $this->error(
-                'SUBSCRIPTION_REQUIRED',
-                'No subscription listing slots remain. Choose pay per listing or renew your plan.',
-                402
+                $blocked ? 'POSTING_BLOCKED' : 'SUBSCRIPTION_REQUIRED',
+                $blocked
+                    ? 'Posting is disabled for this account. Please contact support.'
+                    : 'No subscription listing slots remain. Choose pay per listing or renew your plan.',
+                $blocked ? 403 : 402
             );
         }
 
@@ -84,12 +89,13 @@ class AdMineController extends Controller
 
     /**
      * True when the user holds an unexpired plan and still has quota.
+     *
+     * @deprecated Use PostingPolicy::canPostFree() — kept for callers that
+     * still reference the old helper.
      */
     private function canPostFree($user): bool
     {
-        $hasPlan = !empty($user->plan_expires_at) && $user->plan_expires_at->isFuture();
-
-        return $hasPlan && (int) $user->ads_remaining > 0;
+        return PostingPolicy::canPostFree($user);
     }
 
     public function update(int $id, UpdateAdRequest $request)

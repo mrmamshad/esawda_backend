@@ -14,6 +14,7 @@ use App\Models\Post;
 use App\Models\Transaction;
 use App\Services\AdMutationService;
 use App\Services\Payment\PaymentManager;
+use App\Services\PostingPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -279,6 +280,15 @@ class CheckoutController extends Controller
     /** Pay per listing without consuming a subscription slot. */
     public function paidListing(StoreAdRequest $request)
     {
+        // A posting-blocked account cannot bypass the block by paying.
+        if (PostingPolicy::isBlocked($request->user())) {
+            return $this->error(
+                'POSTING_BLOCKED',
+                'Posting is disabled for this account. Please contact support.',
+                403
+            );
+        }
+
         $settings = Option::pluck('option_value', 'option_name');
         $amount = (float) ($settings['paid_listing_price'] ?? 500);
         if ($amount <= 0) {

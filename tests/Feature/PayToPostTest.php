@@ -112,7 +112,9 @@ class PayToPostTest extends TestCase
 
     public function test_subscription_listing_consumes_one_slot_and_stays_pending(): void
     {
+        // Shops on an active plan burn one slot per listing.
         $user = User::factory()->create([
+            'user_type' => 'seller',
             'plan_id' => 1,
             'plan_expires_at' => now()->addMonth(),
             'ads_remaining' => 2,
