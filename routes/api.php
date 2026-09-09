@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\Admin\OrderAdminController;
 use App\Http\Controllers\Api\V1\Admin\PlanAdminController;
 use App\Http\Controllers\Api\V1\Admin\PremiumUpgradeAdminController;
 use App\Http\Controllers\Api\V1\Admin\SettingsAdminController;
+use App\Http\Controllers\Api\V1\Admin\SubCategoryAdminController;
 use App\Http\Controllers\Api\V1\Admin\TransactionAdminController;
 use App\Http\Controllers\Api\V1\Admin\UserAdminController;
 use App\Http\Controllers\Api\V1\AdMineController;
@@ -208,6 +209,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('ads/{id}', [AdAdminController::class, 'destroy'])->whereNumber('id');
 
         Route::apiResource('categories', CategoryAdminController::class);
+        Route::apiResource('subcategories', SubCategoryAdminController::class);
         Route::apiResource('plans', PlanAdminController::class);
         Route::apiResource('blogs', BlogAdminController::class);
 
