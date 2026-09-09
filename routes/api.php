@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Admin\CategoryAdminController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Api\V1\Admin\OrderAdminController;
 use App\Http\Controllers\Api\V1\Admin\PlanAdminController;
+use App\Http\Controllers\Api\V1\Admin\PremiumUpgradeAdminController;
 use App\Http\Controllers\Api\V1\Admin\SettingsAdminController;
 use App\Http\Controllers\Api\V1\Admin\TransactionAdminController;
 use App\Http\Controllers\Api\V1\Admin\UserAdminController;
@@ -221,5 +222,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('settings', [SettingsAdminController::class, 'index']);
         Route::put('settings', [SettingsAdminController::class, 'update']);
+
+        Route::get('premium-upgrades', [PremiumUpgradeAdminController::class, 'index']);
+        Route::put('premium-upgrades', [PremiumUpgradeAdminController::class, 'update']);
     });
 });
