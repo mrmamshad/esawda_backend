@@ -5,10 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\UserResource;
 use App\Services\Mail\MailService;
-use App\Services\ShopCategoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 /**
  * Shop-owner onboarding + subscription helpers.
@@ -24,7 +22,6 @@ class ShopController extends Controller
 {
     public function __construct(
         private readonly MailService $mail,
-        private readonly ShopCategoryService $shopCategories,
     ) {}
 
     /**
@@ -40,7 +37,7 @@ class ShopController extends Controller
             'owner_phone' => ['required', 'string', 'max:30'],
             'shop_name' => ['required', 'string', 'max:191'],
             'shop_address' => ['required', 'string', 'max:500'],
-            'shop_category' => ['nullable', 'string', 'max:100', Rule::in($this->shopCategories->all())],
+            'shop_category' => ['nullable', 'string', 'max:100'],
             'shop_description' => ['nullable', 'string', 'max:2000'],
             'documents' => ['nullable', 'array'],
             'documents.nid' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],

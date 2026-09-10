@@ -59,9 +59,10 @@ class ShopOnboardingApiTest extends TestCase
         $this->assertSame([], User::firstWhere('shop_name', 'Karim Store')->shop_documents ?? []);
     }
 
-    public function test_shop_application_rejects_a_category_outside_the_configured_list(): void
+    public function test_shop_application_accepts_any_product_category_name(): void
     {
         Storage::fake('public');
+        Mail::fake();
         Sanctum::actingAs(User::factory()->create());
 
         $this->post('/api/v1/me/shop/apply', [
@@ -69,15 +70,12 @@ class ShopOnboardingApiTest extends TestCase
             'owner_phone' => '01700000000',
             'shop_name' => 'Rahim Shop',
             'shop_address' => 'Dhaka',
-            'shop_category' => 'Product-only category',
-            'documents' => [
-                'nid' => UploadedFile::fake()->create('nid.pdf', 100, 'application/pdf'),
-                'trade_licence' => UploadedFile::fake()->create('trade.pdf', 100, 'application/pdf'),
-            ],
+            'shop_category' => 'Cars & Bikes',
         ], ['Accept' => 'application/json'])
-            ->assertUnprocessable()
-            ->assertJsonPath('error.code', 'VALIDATION_FAILED')
-            ->assertJsonStructure(['error' => ['fields' => ['shop_category']]]);
+            ->assertOk()
+            ->assertJsonPath('data.user.is_shop', true);
+
+        $this->assertSame('Cars & Bikes', User::firstWhere('shop_name', 'Rahim Shop')->shop_category);
     }
 
     public function test_user_can_open_a_shop_and_receive_seller_access(): void
