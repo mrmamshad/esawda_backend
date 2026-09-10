@@ -35,10 +35,28 @@ class ShopOnboardingApiTest extends TestCase
                         'owner_phone',
                         'shop_name',
                         'shop_address',
-                        'documents',
                     ],
                 ],
             ]);
+    }
+
+    public function test_shop_application_succeeds_without_documents(): void
+    {
+        Storage::fake('public');
+        Mail::fake();
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->post('/api/v1/me/shop/apply', [
+            'owner_name' => 'Karim Sheikh',
+            'owner_phone' => '01800000000',
+            'shop_name' => 'Karim Store',
+            'shop_address' => 'Mirpur, Dhaka',
+        ], ['Accept' => 'application/json']);
+
+        $response->assertOk()
+            ->assertJsonPath('data.user.is_shop', true);
+
+        $this->assertSame([], User::firstWhere('shop_name', 'Karim Store')->shop_documents ?? []);
     }
 
     public function test_shop_application_rejects_a_category_outside_the_configured_list(): void

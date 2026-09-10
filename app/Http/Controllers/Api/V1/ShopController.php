@@ -42,9 +42,9 @@ class ShopController extends Controller
             'shop_address' => ['required', 'string', 'max:500'],
             'shop_category' => ['nullable', 'string', 'max:100', Rule::in($this->shopCategories->all())],
             'shop_description' => ['nullable', 'string', 'max:2000'],
-            'documents' => ['required', 'array'],
-            'documents.nid' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
-            'documents.trade_licence' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'documents' => ['nullable', 'array'],
+            'documents.nid' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'documents.trade_licence' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'cover' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'banner' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -60,9 +60,12 @@ class ShopController extends Controller
 
         // Store each verification document under its own labelled key so the
         // record is self-describing (e.g. { nid: ..., trade_licence: ... }).
+        // Documents are optional at apply time — only store what was sent.
         $docPaths = [];
         foreach (['nid', 'trade_licence'] as $type) {
-            $docPaths[$type] = $data['documents'][$type]->store('shop-documents/'.$user->id, 'public');
+            if (isset($data['documents'][$type])) {
+                $docPaths[$type] = $data['documents'][$type]->store('shop-documents/'.$user->id, 'public');
+            }
         }
 
         $fill = [
