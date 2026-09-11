@@ -2,13 +2,14 @@
 
 namespace App\Services;
 
+use App\Jobs\OptimizeAdImageJob;
 use App\Models\Category;
 use App\Models\CustomFieldData;
 use App\Models\Post;
 use App\Models\SubCategory;
+use App\Support\AdImage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -50,7 +51,7 @@ class AdMutationService
     {
         $imgs = $this->currentImages($post);
         $imgs = array_values(array_filter($imgs, fn ($n) => $n !== $filename));
-        Storage::disk('public')->delete("products/{$filename}");
+        AdImage::deleteAllVariants($filename);
         $post->screen_shot = json_encode($imgs);
         $post->save();
     }
@@ -189,14 +190,7 @@ class AdMutationService
 
     private function currentImages(Post $post): array
     {
-        $raw = $post->screen_shot;
-        if (empty($raw)) {
-            return [];
-        }
-
-        return is_array($raw)
-            ? $raw
-            : (json_decode((string) $raw, true) ?: preg_split('/[,;]+/', (string) $raw, -1, PREG_SPLIT_NO_EMPTY));
+        return AdImage::namesFromRaw($post->screen_shot);
     }
 
     /** @param UploadedFile[] $files */
@@ -221,6 +215,7 @@ class AdMutationService
         foreach ($validFiles as $file) {
             $name = 'ad_'.$post->id.'_'.Str::random(10).'.'.$file->getClientOriginalExtension();
             $file->storeAs('products', $name, 'public');
+            OptimizeAdImageJob::dispatch($name)->afterCommit();
             $existing[] = $name;
         }
         // Persist only when we actually have image names — never write an

@@ -9,6 +9,7 @@ use App\Http\Resources\V1\TransactionResource;
 use App\Http\Resources\V1\UserResource;
 use App\Models\Order;
 use App\Models\Transaction;
+use App\Support\AdImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -87,18 +88,10 @@ class AccountController extends Controller
 
         $orders = $q->paginate($perPage);
 
-        // Legacy `product.screen_shot` is a JSON array / comma list of
-        // filenames. Flatten to a single absolute image URL the dashboard
-        // can put straight in <img src>.
-        $base = rtrim(config('app.url'), '/').'/storage/products/';
-        $orders->getCollection()->transform(function (Order $order) use ($base) {
-            $raw = $order->product?->screen_shot ?? null;
-            $names = is_array($raw) ? $raw : (json_decode((string) $raw, true) ?: preg_split('/[,;\s]+/', (string) $raw, -1, PREG_SPLIT_NO_EMPTY));
-            $first = collect($names)->map(fn ($n) => trim((string) $n))
-                ->filter(fn ($n) => $n !== '' && $n !== '[]' && $n !== '{}')
-                ->first();
-            $order->setAttribute('product_image',
-                $first ? (preg_match('~^https?://~i', $first) ? $first : $base.ltrim($first, '/')) : null);
+        // Keep order history lightweight by preferring thumbnail variant.
+        $orders->getCollection()->transform(function (Order $order) {
+            $first = AdImage::namesFromRaw($order->product?->screen_shot ?? null)[0] ?? null;
+            $order->setAttribute('product_image', $first ? AdImage::thumbUrl($first) : null);
 
             return $order;
         });
@@ -127,15 +120,9 @@ class AccountController extends Controller
 
         $orders = $q->paginate($perPage);
 
-        $base = rtrim(config('app.url'), '/').'/storage/products/';
-        $orders->getCollection()->transform(function (Order $order) use ($base) {
-            $raw = $order->product?->screen_shot ?? null;
-            $names = is_array($raw) ? $raw : (json_decode((string) $raw, true) ?: preg_split('/[,;\s]+/', (string) $raw, -1, PREG_SPLIT_NO_EMPTY));
-            $first = collect($names)->map(fn ($n) => trim((string) $n))
-                ->filter(fn ($n) => $n !== '' && $n !== '[]' && $n !== '{}')
-                ->first();
-            $order->setAttribute('product_image',
-                $first ? (preg_match('~^https?://~i', $first) ? $first : $base.ltrim($first, '/')) : null);
+        $orders->getCollection()->transform(function (Order $order) {
+            $first = AdImage::namesFromRaw($order->product?->screen_shot ?? null)[0] ?? null;
+            $order->setAttribute('product_image', $first ? AdImage::thumbUrl($first) : null);
 
             return $order;
         });

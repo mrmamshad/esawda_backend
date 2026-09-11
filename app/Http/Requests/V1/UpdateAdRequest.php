@@ -14,6 +14,8 @@ class UpdateAdRequest extends FormRequest
 
     public function rules(): array
     {
+        $maxImageKb = (int) config('quickad.ads.max_image_kb', 25600);
+
         // Every field is optional on update (PATCH-style) but must still
         // pass its own type/length checks when present.
         return [
@@ -37,7 +39,7 @@ class UpdateAdRequest extends FormRequest
             'lat' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
             'lng' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
             'images' => ['sometimes', 'array', 'max:4'],
-            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', "max:{$maxImageKb}"],
             'custom' => ['sometimes', 'array'],
         ];
     }

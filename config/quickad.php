@@ -31,6 +31,18 @@ return [
         'revalidate_secret' => env('FRONTEND_REVALIDATE_SECRET', ''),
     ],
 
+    // Ad media limits / variants.
+    'ads' => [
+        // Laravel's "max" rule uses kilobytes. 25MB = 25600 KB.
+        'max_image_kb' => (int) env('ADS_MAX_IMAGE_KB', 25600),
+        'display_max_width' => (int) env('ADS_IMAGE_DISPLAY_MAX_WIDTH', 1600),
+        'display_max_height' => (int) env('ADS_IMAGE_DISPLAY_MAX_HEIGHT', 1600),
+        'thumb_max_width' => (int) env('ADS_IMAGE_THUMB_MAX_WIDTH', 480),
+        'thumb_max_height' => (int) env('ADS_IMAGE_THUMB_MAX_HEIGHT', 480),
+        'jpeg_quality' => (int) env('ADS_IMAGE_JPEG_QUALITY', 82),
+        'webp_quality' => (int) env('ADS_IMAGE_WEBP_QUALITY', 80),
+    ],
+
     // Themes shipped with the legacy project — kept identical so we can
     // port .tpl → .blade.php one theme at a time.
     'themes' => [

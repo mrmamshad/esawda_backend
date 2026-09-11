@@ -14,6 +14,8 @@ class StoreAdRequest extends FormRequest
 
     public function rules(): array
     {
+        $maxImageKb = (int) config('quickad.ads.max_image_kb', 25600);
+
         return [
             'title' => ['required', 'string', 'min:3', 'max:150'],
             'description' => ['required', 'string', 'min:10'],
@@ -33,7 +35,7 @@ class StoreAdRequest extends FormRequest
             'lat' => ['nullable', 'numeric', 'between:-90,90'],
             'lng' => ['nullable', 'numeric', 'between:-180,180'],
             'images' => ['nullable', 'array', 'max:4'],
-            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', "max:{$maxImageKb}"],
             'custom' => ['nullable', 'array'],   // { field_id: value }
             'bundle_items' => ['nullable', 'array', 'min:1', 'max:20'],
             'bundle_items.*' => ['integer'],
