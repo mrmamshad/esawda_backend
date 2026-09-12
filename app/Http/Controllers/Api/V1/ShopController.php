@@ -45,7 +45,9 @@ class ShopController extends Controller
             'owner_phone' => ['required', 'string', 'max:30'],
             'shop_name' => ['required', 'string', 'max:191'],
             'shop_address' => ['required', 'string', 'max:500'],
-            'shop_category' => ['nullable', 'string', 'max:100', Rule::in($shopCategories)],
+            'shop_category' => $shopCategories
+                ? ['nullable', 'string', 'max:100', Rule::in($shopCategories)]
+                : ['nullable', 'string', 'max:100'],
             'shop_description' => ['nullable', 'string', 'max:2000'],
             'documents' => ['nullable', 'array'],
             'documents.nid' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],

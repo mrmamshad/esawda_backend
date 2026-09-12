@@ -2,47 +2,34 @@
 
 namespace App\Services;
 
-use App\Models\Option;
+use App\Models\Category;
 use Illuminate\Support\Str;
 
 /**
- * Single source of truth for the admin-configurable shop taxonomy.
+ * Single source of truth for shop categories: the PRODUCT taxonomy
+ * (`catagory_main`, managed from Admin → Categories).
  *
- * The legacy options table may contain JSON, comma-separated, or newline-
- * separated values. Normalising it here keeps onboarding and public browsing
- * on the same category list without coupling shops to product categories.
+ * Shops used to have their own list (`shop_categories` option), but the
+ * names never matched the product categories, so sidebar counts and
+ * filters missed shops. Now onboarding, validation, the /shops sidebar
+ * and the filter all resolve against this one list.
  */
 class ShopCategoryService
 {
-    private const DEFAULT_CATEGORIES = [
-        'Electronics',
-        'Fashion & Apparel',
-        'Groceries & Food',
-        'Health & Beauty',
-        'Home & Living',
-        'Mobiles & Gadgets',
-        'Vehicles & Parts',
-        'Baby & Kids',
-        'Sports & Outdoors',
-        'Books & Stationery',
-        'Services',
-        'Other',
-    ];
-
     /** @return array<int, string> */
     public function all(): array
     {
         try {
-            $raw = Option::query()
-                ->where('option_name', 'shop_categories')
-                ->value('option_value');
+            return Category::orderBy('cat_order')
+                ->orderBy('cat_name')
+                ->pluck('cat_name')
+                ->map(fn ($name) => trim((string) $name))
+                ->filter()
+                ->values()
+                ->all();
         } catch (\Throwable) {
-            return self::DEFAULT_CATEGORIES;
+            return [];
         }
-
-        $categories = $this->parse($raw);
-
-        return $categories ?: self::DEFAULT_CATEGORIES;
     }
 
     /** Resolve either a category name or its URL-safe slug. */
@@ -60,37 +47,5 @@ class ShopCategoryService
         }
 
         return null;
-    }
-
-    /** @return array<int, string> */
-    private function parse(mixed $raw): array
-    {
-        if (is_array($raw)) {
-            $values = $raw;
-        } elseif (is_string($raw)) {
-            $trimmed = trim($raw);
-            $decoded = str_starts_with($trimmed, '[') ? json_decode($trimmed, true) : null;
-            $values = is_array($decoded)
-                ? $decoded
-                : preg_split('/[\r\n,]+/', $trimmed, -1, PREG_SPLIT_NO_EMPTY);
-        } else {
-            return [];
-        }
-
-        $normalised = [];
-        foreach ($values ?: [] as $value) {
-            if (!is_scalar($value)) {
-                continue;
-            }
-
-            $category = trim((string) $value);
-            if ($category === '' || mb_strlen($category) > 100) {
-                continue;
-            }
-
-            $normalised[mb_strtolower($category)] = $category;
-        }
-
-        return array_values($normalised);
     }
 }
