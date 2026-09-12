@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\FilterSchemaController;
 use App\Http\Controllers\Api\V1\HomeController;
 use App\Http\Controllers\Api\V1\MessageController;
 use App\Http\Controllers\Api\V1\MetaController;
+use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PaymentCallbackController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SellerController;
@@ -99,6 +100,7 @@ Route::prefix('v1')->group(function () {
     Route::get('ads/search-suggest', [AdController::class, 'searchSuggest']);
     Route::get('ads/{idSlug}', [AdController::class, 'show'])->where('idSlug', '[0-9]+(-.*)?');
     Route::get('ads/{id}/similar', [AdController::class, 'similar'])->whereNumber('id');
+    Route::post('ads/{id}/order', [OrderController::class, 'store'])->whereNumber('id');
 
     /* ---- Shops directory (public) -------------------------------------- */
     Route::get('shop-categories', [ShopDirectoryController::class, 'categories']);
@@ -139,6 +141,7 @@ Route::prefix('v1')->group(function () {
         Route::get('me/transactions', [AccountController::class, 'transactions']);
         Route::get('me/purchases', [AccountController::class, 'purchases']);
         Route::get('me/orders', [AccountController::class, 'orders']);
+        Route::patch('me/orders/{id}/status', [OrderController::class, 'updateStatus'])->whereNumber('id');
         Route::post('me/shop/apply', [ShopController::class, 'apply']);
         Route::get('me/shop/status', [ShopController::class, 'status']);
 
@@ -219,6 +222,7 @@ Route::prefix('v1')->group(function () {
         Route::post('transactions/{id}/mark-paid', [TransactionAdminController::class, 'markPaid'])->whereNumber('id');
 
         Route::get('orders', [OrderAdminController::class, 'index']);
+        Route::get('orders/summary', [OrderAdminController::class, 'summary']);
         Route::get('orders/{id}', [OrderAdminController::class, 'show'])->whereNumber('id');
         Route::patch('orders/{id}', [OrderAdminController::class, 'update'])->whereNumber('id');
 
