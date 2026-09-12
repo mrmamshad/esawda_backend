@@ -30,6 +30,9 @@ class PlanAdminController extends Controller
             'ads_limit' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'featured_ads' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'duration_days' => ['nullable', 'integer', 'min:1', 'max:3650'],
+            // Offer bullets shown on /shop/plan, one line each in the admin UI.
+            'features' => ['nullable', 'array', 'max:20'],
+            'features.*' => ['nullable', 'string', 'max:200'],
         ]);
 
         $settings = [];
@@ -38,7 +41,11 @@ class PlanAdminController extends Controller
                 $settings[$key] = (int) $data[$key];
             }
         }
-        unset($data['ads_limit'], $data['featured_ads'], $data['duration_days']);
+        $features = self::normaliseFeatures($data['features'] ?? null);
+        if ($features) {
+            $settings['features'] = $features;
+        }
+        unset($data['ads_limit'], $data['featured_ads'], $data['duration_days'], $data['features']);
 
         return $this->created(Plan::create($data + [
             'status' => $data['status'] ?? '1',
@@ -69,6 +76,8 @@ class PlanAdminController extends Controller
             'ads_limit' => ['sometimes', 'integer', 'min:0', 'max:100000'],
             'featured_ads' => ['sometimes', 'integer', 'min:0', 'max:100000'],
             'duration_days' => ['sometimes', 'integer', 'min:1', 'max:3650'],
+            'features' => ['sometimes', 'nullable', 'array', 'max:20'],
+            'features.*' => ['nullable', 'string', 'max:200'],
         ]);
 
         $settings = is_array($plan->settings)
@@ -79,6 +88,16 @@ class PlanAdminController extends Controller
                 $settings[$key] = (int) $data[$key];
                 unset($data[$key]);
             }
+        }
+        // Present (even empty) = replace, so the admin can clear the list.
+        if (array_key_exists('features', $data)) {
+            $normalised = self::normaliseFeatures($data['features']);
+            if ($normalised) {
+                $settings['features'] = $normalised;
+            } else {
+                unset($settings['features']);
+            }
+            unset($data['features']);
         }
         $data['settings'] = json_encode($settings);
 
@@ -92,5 +111,34 @@ class PlanAdminController extends Controller
         Plan::findOrFail($id)->delete();
 
         return $this->ok(['message' => 'Plan deleted.']);
+    }
+
+    /**
+     * Trimmed, non-empty lines capped at 20 — shared by store/update so the
+     * settings JSON always holds a clean string list (or nothing).
+     *
+     * @return array<int, string>
+     */
+    private static function normaliseFeatures(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($value as $line) {
+            if (!is_scalar($line)) {
+                continue;
+            }
+            $line = trim((string) $line);
+            if ($line !== '') {
+                $out[] = mb_substr($line, 0, 200);
+            }
+            if (count($out) >= 20) {
+                break;
+            }
+        }
+
+        return array_values($out);
     }
 }
