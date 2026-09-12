@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\UserResource;
+use App\Models\User;
 use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -69,6 +70,10 @@ class ShopController extends Controller
             'user_type' => 'seller',
             'name' => $data['owner_name'],
             'phone' => $data['owner_phone'],
+            // No username field on the form — the shop name IS the public
+            // username. Derived here so every client (old or new) ends up
+            // with the same unique, URL-safe value.
+            'username' => self::uniqueUsernameFromShopName($data['shop_name'], (int) $user->id),
             'shop_name' => $data['shop_name'],
             'shop_category' => $data['shop_category'] ?? null,
             'shop_address' => $data['shop_address'],
@@ -105,6 +110,33 @@ class ShopController extends Controller
             'message' => 'Your shop is open.',
             'user' => (new UserResource($user))->resolve(),
         ]);
+    }
+
+    /**
+     * URL-safe username from a shop name. Matches the `user.username`
+     * rules (letters/digits/dot/dash/underscore, 3–40 chars, unique):
+     * non-latin or too-short names fall back to `shop_{id}`, and taken
+     * names get a numeric suffix (`my_shop_2`).
+     */
+    private static function uniqueUsernameFromShopName(string $shopName, int $ignoreUserId): string
+    {
+        $base = (string) Str::slug($shopName, '_');
+        $base = (string) preg_replace('/[^A-Za-z0-9_.-]+/', '', $base);
+        $base = trim($base, '._-');
+        if (strlen($base) < 3) {
+            $base = 'shop_'.$ignoreUserId;
+        }
+        $base = substr($base, 0, 32);
+
+        $candidate = $base;
+        $i = 1;
+        while (User::where('username', $candidate)->where('id', '!=', $ignoreUserId)->exists()) {
+            $i++;
+            $suffix = '_'.$i;
+            $candidate = substr($base, 0, 40 - strlen($suffix)).$suffix;
+        }
+
+        return $candidate;
     }
 
     /**
