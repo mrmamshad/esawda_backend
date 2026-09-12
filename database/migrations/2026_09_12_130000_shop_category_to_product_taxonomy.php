@@ -45,7 +45,7 @@ return new class extends Migration
             $products = DB::table('catagory_main')
                 ->orderBy('cat_order')
                 ->pluck('cat_name');
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return;
         }
 
@@ -66,7 +66,7 @@ return new class extends Migration
                 ->where('shop_category', '<>', '')
                 ->select('id', 'shop_category')
                 ->get();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return;
         }
 

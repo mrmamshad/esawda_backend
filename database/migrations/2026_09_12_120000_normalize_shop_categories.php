@@ -72,7 +72,7 @@ return new class extends Migration
     {
         try {
             $raw = DB::table('options')->where('option_name', 'shop_categories')->value('option_value');
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return [];
         }
 
