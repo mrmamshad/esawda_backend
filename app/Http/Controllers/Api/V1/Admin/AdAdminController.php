@@ -85,6 +85,28 @@ class AdAdminController extends Controller
         return $this->ok($post);
     }
 
+    /**
+     * Visibility switch without touching the moderation status — a hidden
+     * (inactive) ad stays out of the public marketplace until unhidden.
+     */
+    public function hide(int $id)
+    {
+        $post = Post::findOrFail($id);
+        $post->forceFill(['hide' => '1', 'updated_at' => now()])->save();
+        RevalidateFrontendJob::dispatch();
+
+        return $this->ok(['message' => 'Ad hidden.', 'ad' => $post]);
+    }
+
+    public function unhide(int $id)
+    {
+        $post = Post::findOrFail($id);
+        $post->forceFill(['hide' => '0', 'updated_at' => now()])->save();
+        RevalidateFrontendJob::dispatch();
+
+        return $this->ok(['message' => 'Ad visible.', 'ad' => $post]);
+    }
+
     public function destroy(int $id)
     {
         Post::findOrFail($id)->delete();

@@ -209,6 +209,8 @@ Route::prefix('v1')->group(function () {
         Route::post('ads/{id}/reject', [AdAdminController::class, 'reject'])->whereNumber('id');
         Route::post('ads/{id}/feature', [AdAdminController::class, 'feature'])->whereNumber('id');
         Route::post('ads/{id}/unfeature', [AdAdminController::class, 'unfeature'])->whereNumber('id');
+        Route::post('ads/{id}/hide', [AdAdminController::class, 'hide'])->whereNumber('id');
+        Route::post('ads/{id}/unhide', [AdAdminController::class, 'unhide'])->whereNumber('id');
         Route::delete('ads/{id}', [AdAdminController::class, 'destroy'])->whereNumber('id');
 
         Route::apiResource('categories', CategoryAdminController::class);
