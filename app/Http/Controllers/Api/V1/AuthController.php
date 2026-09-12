@@ -38,7 +38,7 @@ class AuthController extends Controller
         }
 
         $user = User::forceCreate([
-            'username' => !empty($data['username']) ? $data['username'] : $this->uniqueGuestUsername($data['phone']),
+            'username' => !empty($data['username']) ? $data['username'] : $this->uniqueGuestUsername($data['phone'], $data['name'] ?? null),
             'email' => $data['email'],
             'name' => $data['name'] ?? $data['username'] ?? $data['phone'],
             'phone' => $data['phone'] ?? null,
@@ -121,7 +121,7 @@ class AuthController extends Controller
 
         if (!$user) {
             $user = User::forceCreate([
-                'username' => $this->uniqueGuestUsername($mobile),
+                'username' => $this->uniqueGuestUsername($mobile, $name),
                 'name' => $name,
                 'phone' => $mobile,
                 'password_hash' => Hash::make(Str::random(64)),
@@ -178,7 +178,7 @@ class AuthController extends Controller
         }
 
         $user = User::forceCreate([
-            'username' => $this->uniqueGuestUsername($mobile),
+            'username' => $this->uniqueGuestUsername($mobile, $name),
             'name' => $name,
             'phone' => $mobile,
             'password_hash' => Hash::make($data['password']),
@@ -229,16 +229,30 @@ class AuthController extends Controller
         ])->save();
     }
 
-    private function uniqueGuestUsername(string $mobile): string
+    /**
+     * Shareable public username. Name-based slug first (so /store URLs look
+     * like /store/hi-hello, not /store/guest013...), phone-based fallback
+     * when the name has nothing URL-safe in it.
+     */
+    private function uniqueGuestUsername(string $mobile, ?string $name = null): string
     {
-        $base = 'guest'.preg_replace('/\D+/', '', $mobile);
-        $base = $base ?: 'guestuser';
-        $base = substr($base, 0, 40);
+        $base = '';
+        if ($name !== null && trim($name) !== '') {
+            $base = (string) Str::slug(trim($name), '-');
+            $base = (string) preg_replace('/[^A-Za-z0-9_.-]+/', '', $base);
+            $base = trim($base, '._-');
+        }
+        if (strlen($base) < 3) {
+            $base = 'guest'.preg_replace('/\D+/', '', $mobile);
+            $base = $base ?: 'guestuser';
+        }
+        $base = substr($base, 0, 37);
         $candidate = $base;
         $i = 1;
         while (User::where('username', $candidate)->exists()) {
-            $candidate = substr($base, 0, 34).'_'.$i;
             $i++;
+            $suffix = '-'.$i;
+            $candidate = substr($base, 0, 40 - strlen($suffix)).$suffix;
         }
 
         return $candidate;
