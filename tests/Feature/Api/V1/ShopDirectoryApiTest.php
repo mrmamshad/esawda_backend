@@ -41,41 +41,46 @@ class ShopDirectoryApiTest extends TestCase
             ->assertJsonPath('data.0.stats.total_products', 2);
     }
 
-    public function test_shop_categories_are_separate_and_include_live_counts(): void
+    public function test_shop_categories_come_from_product_taxonomy_with_live_counts(): void
     {
+        $this->seedProductCategories();
         $this->createShop('Phone World', 'Electronics');
         $this->createShop('Laptop World', 'Electronics');
-        $this->createShop('Style House', 'Fashion & Apparel');
+        $this->createShop('Style House', 'Fashion');
         $this->createShop('Uncategorised Shop', null);
-        $this->createShop('Hidden Style', 'Fashion & Apparel', status: '0');
+        $this->createShop('Hidden Style', 'Fashion', status: '0');
+        // Legacy separate-taxonomy value: counted in the total but gets no
+        // sidebar entry of its own.
+        $this->createShop('Legacy Shop', 'Fashion & Apparel');
 
         $response = $this->getJson('/api/v1/shop-categories')->assertOk();
 
-        $response->assertJsonPath('data.0.name', 'Electronics')
-            ->assertJsonPath('data.0.slug', 'electronics')
-            ->assertJsonPath('data.0.shops_count', 2)
-            ->assertJsonPath('data.1.name', 'Fashion & Apparel')
-            ->assertJsonPath('data.1.shops_count', 1)
-            ->assertJsonPath('meta.total_shops', 4);
+        $response->assertJsonPath('data.0.name', 'Fashion')
+            ->assertJsonPath('data.0.slug', 'fashion')
+            ->assertJsonPath('data.0.shops_count', 1)
+            ->assertJsonPath('data.1.name', 'Electronics')
+            ->assertJsonPath('data.1.shops_count', 2)
+            ->assertJsonPath('meta.total_shops', 5);
 
-        $this->assertCount(12, $response->json('data'));
+        $this->assertCount(2, $response->json('data'));
     }
 
     public function test_directory_filters_by_category_slug_and_searches_shop_profiles(): void
     {
+        $this->seedProductCategories();
         $this->createShop('Phone World', 'Electronics', description: 'Smartphones and accessories');
-        $this->createShop('Dhaka Style House', 'Fashion & Apparel', description: 'Local clothing');
-        $this->createShop('Chattogram Fashion', 'Fashion & Apparel', description: 'Designer wear');
+        $this->createShop('Dhaka Style House', 'Fashion', description: 'Local clothing');
+        $this->createShop('Chattogram Fashion', 'Fashion', description: 'Designer wear');
 
-        $filtered = $this->getJson('/api/v1/shops?filter[category]=fashion-apparel')
+        $filtered = $this->getJson('/api/v1/shops?filter[category]=fashion')
             ->assertOk()
             ->assertJsonPath('meta.total', 2);
 
         foreach ($filtered->json('data') as $shop) {
-            $this->assertSame('Fashion & Apparel', $shop['shop_category']);
+            $this->assertSame('Fashion', $shop['shop_category']);
         }
 
-        $this->getJson('/api/v1/shops?filter[category]=FASHION%20%26%20APPAREL')
+        $this->getJson('/api/v1/shops?filter[category]=FASHION')
             ->assertOk()
             ->assertJsonPath('meta.total', 2);
 
@@ -103,8 +108,15 @@ class ShopDirectoryApiTest extends TestCase
             ->assertJsonPath('data.0.stats.active_products', 2);
     }
 
-    private function createShop(
-        string $shopName,
+    private function seedProductCategories(): void
+    {
+        \DB::table('catagory_main')->insert([
+            ['cat_id' => 1, 'cat_order' => 1, 'cat_name' => 'Fashion', 'slug' => 'fashion'],
+            ['cat_id' => 2, 'cat_order' => 2, 'cat_name' => 'Electronics', 'slug' => 'electronics'],
+        ]);
+    }
+
+    private function createShop(string $shopName,
         ?string $category,
         string $status = '1',
         bool $verified = false,
