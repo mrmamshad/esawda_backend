@@ -47,6 +47,11 @@ class PlanAdminController extends Controller
         }
         unset($data['ads_limit'], $data['featured_ads'], $data['duration_days'], $data['features']);
 
+        // `recommended` column is enum('yes','no') — convert the boolean.
+        if (array_key_exists('recommended', $data)) {
+            $data['recommended'] = !empty($data['recommended']) ? 'yes' : 'no';
+        }
+
         return $this->created(Plan::create($data + [
             'status' => $data['status'] ?? '1',
             'settings' => json_encode($settings),
@@ -98,6 +103,10 @@ class PlanAdminController extends Controller
                 unset($settings['features']);
             }
             unset($data['features']);
+        }
+        // `recommended` column is enum('yes','no') — convert the boolean.
+        if (array_key_exists('recommended', $data)) {
+            $data['recommended'] = !empty($data['recommended']) ? 'yes' : 'no';
         }
         $data['settings'] = json_encode($settings);
 
