@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\UserResource;
 use App\Models\User;
 use App\Services\Mail\MailService;
+use App\Services\ShopCategoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 /**
  * Shop-owner onboarding + subscription helpers.
@@ -33,12 +35,17 @@ class ShopController extends Controller
      */
     public function apply(Request $request)
     {
+        // The dropdown only offers this list, so anything else is a stale
+        // or tampered value — reject it instead of saving a category the
+        // /shops sidebar and filter can never match.
+        $shopCategories = app(ShopCategoryService::class)->all();
+
         $data = $request->validate([
             'owner_name' => ['required', 'string', 'max:150'],
             'owner_phone' => ['required', 'string', 'max:30'],
             'shop_name' => ['required', 'string', 'max:191'],
             'shop_address' => ['required', 'string', 'max:500'],
-            'shop_category' => ['nullable', 'string', 'max:100'],
+            'shop_category' => ['nullable', 'string', 'max:100', Rule::in($shopCategories)],
             'shop_description' => ['nullable', 'string', 'max:2000'],
             'documents' => ['nullable', 'array'],
             'documents.nid' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
