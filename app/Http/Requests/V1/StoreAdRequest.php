@@ -39,6 +39,10 @@ class StoreAdRequest extends FormRequest
             'custom' => ['nullable', 'array'],   // { field_id: value }
             'bundle_items' => ['nullable', 'array', 'min:1', 'max:20'],
             'bundle_items.*' => ['integer'],
+            // Which radio the seller picked on the Post a Product form.
+            // Validated against the admin's listing-type switches in
+            // AdMineController; ignored by the mutation service otherwise.
+            'listing_type' => ['nullable', 'in:free,premium'],
         ];
     }
 }

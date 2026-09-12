@@ -98,6 +98,18 @@ class CheckoutController extends Controller
     /** POST /checkout/ad-upgrade/{postId}  body: { featured?, urgent?, highlight? } */
     public function adUpgrade(int $postId, Request $request)
     {
+        // Admin can switch Premium listing off entirely (Settings → Premium
+        // upgrades). The form hides the radio, but the API re-checks so old
+        // clients can't buy a disabled boost.
+        $premiumEnabled = (string) (Option::where('option_name', 'listing_premium_enabled')->value('option_value') ?? '1') !== '0';
+        if (!$premiumEnabled) {
+            return $this->error(
+                'PREMIUM_LISTING_DISABLED',
+                'Premium listing is currently disabled.',
+                403
+            );
+        }
+
         $data = $request->validate([
             'featured' => ['sometimes', 'boolean'],
             'urgent' => ['sometimes', 'boolean'],

@@ -10,6 +10,7 @@ use App\Http\Resources\V1\AdDetailResource;
 use App\Http\Resources\V1\AdResource;
 use App\Jobs\RevalidateFrontendJob;
 use App\Models\Favourite;
+use App\Models\Option;
 use App\Models\Post;
 use App\Models\User;
 use App\Services\AdMutationService;
@@ -42,6 +43,28 @@ class AdMineController extends Controller
     public function store(StoreAdRequest $request)
     {
         $isBundle = !empty($request->input('bundle_items'));
+
+        // Admin listing-type switches (Settings → Premium upgrades). The
+        // frontend hides the disabled radio, but the API re-checks so old
+        // clients can't bypass it. Bundles group existing products and stay
+        // exempt. Missing `listing_type` means an old free-path client.
+        if (!$isBundle) {
+            $listingType = (string) ($request->input('listing_type', 'free') ?: 'free');
+            if ($listingType === 'free' && !self::listingTypeEnabled('listing_free_enabled')) {
+                return $this->error(
+                    'FREE_LISTING_DISABLED',
+                    'Free listing is currently disabled. Please choose Premium listing.',
+                    403
+                );
+            }
+            if ($listingType === 'premium' && !self::listingTypeEnabled('listing_premium_enabled')) {
+                return $this->error(
+                    'PREMIUM_LISTING_DISABLED',
+                    'Premium listing is currently disabled. Please choose Free listing.',
+                    403
+                );
+            }
+        }
 
         $post = DB::transaction(function () use ($request, $isBundle) {
             $user = User::query()->lockForUpdate()->findOrFail($request->user()->id);
@@ -96,6 +119,15 @@ class AdMineController extends Controller
     private function canPostFree($user): bool
     {
         return PostingPolicy::canPostFree($user);
+    }
+
+    /**
+     * Listing-type switch state. ON unless the stored option is exactly
+     * `'0'`; missing keys default to ON so old installs keep working.
+     */
+    private static function listingTypeEnabled(string $key): bool
+    {
+        return (string) (Option::where('option_name', $key)->value('option_value') ?? '1') !== '0';
     }
 
     public function update(int $id, UpdateAdRequest $request)
