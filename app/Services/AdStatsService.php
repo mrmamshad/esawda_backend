@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Favourite;
-use App\Models\Message;
+use App\Models\Order;
 use App\Models\Post;
 use App\Models\Review;
 use App\Models\Transaction;
@@ -25,13 +25,13 @@ class AdStatsService
         $avgRating = (float) $reviewsQ->avg('rating');
         $totalReviews = (int) $reviewsQ->count();
 
-        // "Orders" concept for classifieds = distinct buyer threads on my ads.
-        // NOTE: legacy `messages` table uses from_id/to_id/message_date —
-        // the old from_user/to_user/created_at names 500'd in prod.
-        $totalOrders = Message::whereIn('to_id', [$userId])->distinct('from_id')->count('from_id');
-        $activeOrders = Message::whereIn('to_id', [$userId])
-            ->where('message_date', '>=', now()->subDays(7))
-            ->distinct('from_id')->count('from_id');
+        // "Orders" = cash-on-delivery orders placed on my products
+        // (orders table). Pending + confirmed count as active; delivered
+        // and cancelled are closed.
+        $totalOrders = Order::where('seller_id', $userId)->count();
+        $activeOrders = Order::where('seller_id', $userId)
+            ->whereIn('shipping_status', ['pending', 'confirmed'])
+            ->count();
 
         // Sales this month from confirmed transactions (my ad-upgrade purchases).
         $salesThisMonth = (float) Transaction::where('seller_id', $userId)
