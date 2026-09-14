@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class UserAdminController extends Controller
 {
@@ -143,8 +146,55 @@ class UserAdminController extends Controller
 
     public function destroy(int $id)
     {
-        User::findOrFail($id)->delete();
+        $user = User::findOrFail($id);
 
-        return $this->ok(['message' => 'User deleted.']);
+        try {
+            $user->delete();
+
+            return $this->ok(['message' => 'User deleted.']);
+        } catch (QueryException $e) {
+            // Some legacy records are referenced by FK-constrained tables
+            // (e.g. orders.seller_id / buyer_id). When physical delete is
+            // blocked, archive the account and release login identifiers so
+            // the same email/phone can be registered again.
+            $stamp = now()->format('YmdHis');
+            $suffix = 'deleted_'.$user->id.'_'.$stamp;
+            $username = Str::limit($suffix, 40, '');
+            $placeholderEmail = Str::limit($suffix, 120, '').'@deleted.local';
+
+            $user->tokens()->delete();
+            $user->forceFill([
+                'username' => $username,
+                'email' => $placeholderEmail,
+                'phone' => null,
+                'status' => '0',
+                'user_type' => 'user',
+                'group_id' => 'free',
+                'post_policy' => 'blocked',
+                'plan_id' => null,
+                'plan_expires_at' => null,
+                'ads_remaining' => 0,
+                'forgot' => null,
+                'forgot_expires_at' => null,
+                'shop_status' => 'inactive',
+                'shop_verified_at' => null,
+                'shop_name' => null,
+                'shop_category' => null,
+                'shop_address' => null,
+                'shop_description' => null,
+                'shop_documents' => null,
+                'shop_banner' => null,
+                'updated_at' => now(),
+            ])->save();
+
+            Log::warning('User hard-delete blocked; archived account and released identifiers', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->ok([
+                'message' => 'User archived (hard delete blocked by related records). Email/phone have been released for reuse.',
+            ]);
+        }
     }
 }
