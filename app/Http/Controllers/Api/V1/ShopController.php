@@ -79,9 +79,10 @@ class ShopController extends Controller
             'user_type' => 'seller',
             'name' => $data['owner_name'],
             'phone' => $data['owner_phone'],
-            // New shops start Inactive — an admin activates them from the
-            // Shops page, which is what lists them publicly.
-            'status' => '0',
+            // New shops start Inactive — hidden from the public Shops page
+            // until an admin activates them. This is the shop_status flag,
+            // NOT status ('1' stays so the owner can always log in).
+            'shop_status' => 'inactive',
             // No username field on the form — the shop name IS the public
             // username. Derived here so every client (old or new) ends up
             // with the same unique, URL-safe value.

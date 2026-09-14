@@ -51,4 +51,26 @@ jobs:
             php artisan config:cache
             php artisan route:cache
             php artisan optimize
+
+            # ── Background workers (transactional emails, image jobs,
+            #    fulfilment, scheduler). Ensured idempotently on every deploy
+            #    from the unit files in the repo (deploy/*.service) so they
+            #    can never silently drift from the real app path. Each sudo is
+            #    guarded: if the deploy user lacks passwordless sudo the code
+            #    still ships — the worker step is only skipped with a warning.
+            APP_DIR=/home/esawda-api/htdocs/api.esawda.com
+            for unit in esawda-queue esawda-scheduler; do
+              if sudo -n test -f "$APP_DIR/deploy/$unit.service"; then
+                sudo -n cp "$APP_DIR/deploy/$unit.service" "/etc/systemd/system/$unit.service" \
+                  && sudo -n systemctl daemon-reload \
+                  && sudo -n systemctl enable --now "$unit" \
+                  && echo "ensured systemd unit: $unit" \
+                  || echo "WARN: could not install $unit (no passwordless sudo?) — follow DEPLOY.md §6"
+              else
+                echo "WARN: deploy/$unit.service not found; skipping"
+              fi
+            done
+            # Make the running queue worker reload the freshly-deployed code.
+            php "$APP_DIR/artisan" queue:restart || true
+
             curl -sf -o /dev/null -H 'Accept: application/json' https://api.esawda.com/api/v1/categories

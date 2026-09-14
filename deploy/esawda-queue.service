@@ -1,0 +1,20 @@
+[Unit]
+Description=eSawda Laravel queue worker (emails, image optimization, fulfilment jobs)
+After=network.target
+
+[Service]
+Type=exec
+# Must be the OS user that owns the app files / can read .env.
+User=esawda-api
+Group=esawda-api
+WorkingDirectory=/home/esawda-api/htdocs/api.esawda.com
+ExecStart=/usr/bin/php /home/esawda-api/htdocs/api.esawda.com/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+# queue:restart (run on every deploy) tells the worker to exit gracefully so
+# systemd restarts it with the freshly-deployed code + config.
+Restart=always
+RestartSec=3
+StandardOutput=append:/home/esawda-api/htdocs/api.esawda.com/storage/logs/queue.log
+StandardError=append:/home/esawda-api/htdocs/api.esawda.com/storage/logs/queue.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,19 @@
+[Unit]
+Description=eSawda Laravel scheduler (ads:expire daily, DGePay reconcile every 5 min)
+After=network.target
+
+[Service]
+Type=exec
+# Must be the OS user that owns the app files / can read .env.
+User=esawda-api
+Group=esawda-api
+WorkingDirectory=/home/esawda-api/htdocs/api.esawda.com
+# schedule:work runs the Laravel scheduler in a loop (no crontab needed).
+ExecStart=/usr/bin/php /home/esawda-api/htdocs/api.esawda.com/artisan schedule:work
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/esawda-api/htdocs/api.esawda.com/storage/logs/schedule.log
+StandardError=append:/home/esawda-api/htdocs/api.esawda.com/storage/logs/schedule.log
+
+[Install]
+WantedBy=multi-user.target

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 
 class UserAdminController extends Controller
@@ -96,6 +97,29 @@ class UserAdminController extends Controller
         $user->forceFill(['shop_verified_at' => null, 'updated_at' => now()])->save();
 
         return $this->ok(['message' => 'Shop verification removed.', 'user' => $user]);
+    }
+
+    /**
+     * Shop Activate / Deactivate — controls only whether the shop appears on
+     * the public Shops page (shop_status). Unlike ban, it never blocks the
+     * owner from logging in.
+     */
+    public function activateShop(int $id)
+    {
+        $user = User::findOrFail($id);
+        $user->forceFill(['shop_status' => 'active', 'updated_at' => now()])->save();
+        Cache::forget('home.payload');
+
+        return $this->ok(['message' => 'Shop activated.', 'user' => $user]);
+    }
+
+    public function deactivateShop(int $id)
+    {
+        $user = User::findOrFail($id);
+        $user->forceFill(['shop_status' => 'inactive', 'updated_at' => now()])->save();
+        Cache::forget('home.payload');
+
+        return $this->ok(['message' => 'Shop deactivated.', 'user' => $user]);
     }
 
     /**

@@ -76,26 +76,55 @@ sudo ln -s /etc/nginx/sites-available/quickad /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-## 6. Queue worker (for emails / image resizing)
+## 6. Queue worker + scheduler (emails / image resizing / ads:expire)
+
+> **Note:** The GitHub Actions deploy (`.github/workflows/deploy.yml`) now
+> installs and keeps these running automatically on every push, using the
+> unit files committed under `deploy/`. The manual steps below are only for
+> the first-time setup or when passwordless sudo is unavailable to the runner.
+>
+> Set `RUN_USER` to the OS user that owns the app files and can read `.env`
+> (on this server that is `esawda-api`, app path
+> `/home/esawda-api/htdocs/api.esawda.com`).
+
 ```bash
-sudo tee /etc/systemd/system/quickad-queue.service <<EOF
-[Unit]
-Description=Quickad queue worker
-After=network.target
-[Service]
-User=www-data
-Restart=always
-ExecStart=/usr/bin/php /var/www/quickad/laravel-quickad/artisan queue:work --sleep=3 --tries=3
-[Install]
-WantedBy=multi-user.target
-EOF
-sudo systemctl enable --now quickad-queue
+APP_DIR=/home/esawda-api/htdocs/api.esawda.com
+RUN_USER=esawda-api
+
+# Queue worker (all MailService::queue() jobs: order/ad/plan/shop/contact emails,
+# fulfilment, image optimisation).
+sudo cp "$APP_DIR/deploy/esawda-queue.service" /etc/systemd/system/esawda-queue.service
+# Scheduler (ads:expire daily, DGePay reconcile every 5 min) — no crontab needed.
+sudo cp "$APP_DIR/deploy/esawda-scheduler.service" /etc/systemd/system/esawda-scheduler.service
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now esawda-queue esawda-scheduler
 ```
 
-## 7. Cron (expire ads, cleanup)
+Verify it's actually draining jobs:
+
 ```bash
-* * * * * cd /var/www/quickad/laravel-quickad && php artisan schedule:run >> /dev/null 2>&1
+sudo systemctl status esawda-queue esawda-scheduler
+php "$APP_DIR/artisan" tinker --execute="echo DB::table('jobs')->count().' pending job(s)';"
+# Queue + scheduler logs land under storage/logs/queue.log and schedule.log.
 ```
+
+After each deploy the pipeline runs `php artisan queue:restart`, which makes
+the live worker finish its current job, exit, and let systemd relaunch it with
+the freshly-deployed code — so config/code changes take effect without a
+manual restart.
+
+> Password-reset emails are sent **synchronously** (they do not depend on the
+> worker), so a stalled worker can never strand the "reset link never
+> arrives" case. Every other transactional email flows through the worker.
+
+## 7. Cron (alternative to the scheduler service)
+
+Only needed if you prefer cron over the `esawda-scheduler` systemd unit above:
+```bash
+* * * * * cd /home/esawda-api/htdocs/api.esawda.com && php artisan schedule:run >> /dev/null 2>&1
+```
+Do **not** enable both — pick the systemd unit *or* this cron line.
 
 ## 8. Post-deploy checks
 - `curl -I https://your-domain.com/`          — 200

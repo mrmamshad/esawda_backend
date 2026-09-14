@@ -32,6 +32,7 @@ class ShopDirectoryController extends Controller
         $query = User::query()
             ->where('user_type', 'seller')
             ->where('status', '1')
+            ->where('shop_status', 'active')
             ->whereNotNull('shop_name')
             ->where('shop_name', '<>', '')
             ->withCount([
@@ -91,6 +92,7 @@ class ShopDirectoryController extends Controller
         $shops = User::query()
             ->where('user_type', 'seller')
             ->where('status', '1')
+            ->where('shop_status', 'active')
             ->whereNotNull('shop_name')
             ->where('shop_name', '<>', '');
 
