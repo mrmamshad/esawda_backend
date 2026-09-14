@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Post;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 /**
@@ -298,24 +299,35 @@ class MailService
     /* Auth / content events */
     /* --------------------------------------------------------------- */
 
-    /** B6 — User: password reset link. Sent synchronously so a stalled queue
-     *  worker can never strand the "email not arriving" case. */
+    /** B6 — User: password reset link. Prefer immediate delivery; if the
+     *  web runtime cannot send SMTP directly, fall back to queued delivery
+     *  so users still receive the reset email. */
     public function passwordReset(User $user, string $resetUrl): void
     {
         if (!$user->email) {
             return;
         }
 
-        $this->sendNow(
-            $user->email,
-            $user->name ?: $user->username,
-            'Reset your eSawda password',
-            'emails.auth.password-reset',
-            [
-                'user' => $user,
-                'resetUrl' => $resetUrl,
-            ],
-        );
+        $to = (string) $user->email;
+        $toName = (string) ($user->name ?: $user->username);
+        $subject = 'Reset your eSawda password';
+        $view = 'emails.auth.password-reset';
+        $data = [
+            'user' => $user,
+            'resetUrl' => $resetUrl,
+        ];
+
+        try {
+            $this->sendNow($to, $toName, $subject, $view, $data);
+        } catch (\Throwable $e) {
+            Log::warning('Password reset immediate send failed; queueing fallback', [
+                'user_id' => $user->id,
+                'email' => $to,
+                'error' => $e->getMessage(),
+            ]);
+
+            $this->send($to, $toName, $subject, $view, $data);
+        }
     }
 
     /** A4 — Admin: contact form submission. */

@@ -312,6 +312,20 @@ class TransactionalEmailsTest extends TestCase
         });
     }
 
+    public function test_password_reset_lookup_is_case_insensitive(): void
+    {
+        Mail::fake();
+
+        $this->user(['email' => 'User.Case@TestMail.com', 'name' => 'Case User']);
+
+        $this->postJson('/api/v1/auth/forgot', ['email' => 'user.case@testmail.com'])
+            ->assertOk();
+
+        Mail::assertSent(Transactional::class, fn (Mailable $mail) => $mail->hasTo('User.Case@TestMail.com')
+            && str_contains($mail->envelope()->subject, 'Reset your eSawda password')
+        );
+    }
+
     public function test_contact_form_notifies_admin(): void
     {
         Mail::fake();

@@ -275,7 +275,13 @@ class AuthController extends Controller
 
     public function forgot(ForgotPasswordRequest $request)
     {
-        $user = User::where('email', $request->string('email'))->first();
+        // Normalize input so mixed-case emails (or strict DB collations)
+        // still resolve the same account.
+        $email = Str::lower(trim((string) $request->input('email')));
+
+        $user = User::query()
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->first();
         // Always 200 to prevent user enumeration.
         if ($user) {
             $token = Str::random(64);
