@@ -16,6 +16,7 @@ use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -283,10 +284,23 @@ class AuthController extends Controller
                 'forgot_expires_at' => now()->addMinutes(60),
             ])->save();
 
-            $resetUrl = rtrim(env('FRONTEND_URLS', 'http://localhost:3000'), ',')
-                      .'/auth/reset?token='.urlencode($token);
+            $mail = app(MailService::class);
+            // Canonical single frontend origin (config), NOT the comma-
+            // separated FRONTEND_URLS CORS list — that produced a broken
+            // "https://a,https://b/auth/reset" link.
+            $resetUrl = $mail->frontendUrl('auth/reset?token='.urlencode($token));
 
-            app(MailService::class)->passwordReset($user, $resetUrl);
+            // Sent synchronously; a transient SMTP failure must not turn the
+            // enumeration-safe 200 into a 500, and must not leak whether the
+            // mailbox exists — log it for ops instead.
+            try {
+                $mail->passwordReset($user, $resetUrl);
+            } catch (\Throwable $e) {
+                Log::error('Password reset email failed to send', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return $this->ok(['message' => 'If the email exists, a reset link has been sent.']);

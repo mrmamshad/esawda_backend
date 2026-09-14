@@ -295,14 +295,20 @@ class TransactionalEmailsTest extends TestCase
         $this->postJson('/api/v1/auth/forgot', ['email' => $user->email])
             ->assertOk();
 
-        Mail::assertQueued(Transactional::class, function (Mailable $mail) {
+        // Password reset now sends synchronously (no queue-worker dependency).
+        Mail::assertSent(Transactional::class, function (Mailable $mail) {
             if (!$mail->hasTo('user@example.com') || !str_contains($mail->envelope()->subject, 'Reset your eSawda password')) {
                 return false;
             }
             $html = $mail->render();
 
+            // Regression: reset link must use a single canonical frontend
+            // origin, never the comma-separated FRONTEND_URLS CORS list.
+            $url = $mail->data['resetUrl'] ?? '';
+
             return str_contains($html, 'Reset your password')
-                && str_contains($html, '/auth/reset?token=');
+                && str_contains($url, '/auth/reset?token=')
+                && !str_contains($url, ',');
         });
     }
 

@@ -31,6 +31,21 @@ class MailService
     }
 
     /**
+     * Deliver immediately (bypasses the queue). Used for latency-critical
+     * emails the user is actively waiting on — password reset — so they do
+     * not stall behind a queue worker. Any SMTP failure surfaces now.
+     */
+    public function sendNow(string $to, string $toName, string $subject, string $view, array $data = []): void
+    {
+        $data += [
+            'subject' => $subject,
+            'frontendUrl' => $this->frontendUrl(),
+        ];
+
+        Mail::to($to, $toName)->send(new Transactional($subject, $view, $data));
+    }
+
+    /**
      * Send to the configured site admin (config('quickad.admin_email')).
      */
     public function sendToAdmin(string $subject, string $view, array $data = []): void
@@ -283,14 +298,15 @@ class MailService
     /* Auth / content events */
     /* --------------------------------------------------------------- */
 
-    /** B6 — User: password reset link. */
+    /** B6 — User: password reset link. Sent synchronously so a stalled queue
+     *  worker can never strand the "email not arriving" case. */
     public function passwordReset(User $user, string $resetUrl): void
     {
         if (!$user->email) {
             return;
         }
 
-        $this->send(
+        $this->sendNow(
             $user->email,
             $user->name ?: $user->username,
             'Reset your eSawda password',
