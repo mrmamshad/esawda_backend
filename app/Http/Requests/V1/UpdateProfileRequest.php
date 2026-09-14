@@ -25,6 +25,7 @@ class UpdateProfileRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:255'],
             'tagline' => ['nullable', 'string', 'max:190'],
             'description' => ['nullable', 'string', 'max:2000'],
+            'shop_description' => ['nullable', 'string', 'max:2000'],
             'website' => ['nullable', 'url', 'max:190'],
             'facebook' => ['nullable', 'string', 'max:190'],
             'twitter' => ['nullable', 'string', 'max:190'],
