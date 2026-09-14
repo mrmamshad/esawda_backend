@@ -110,9 +110,14 @@ class DashboardController extends Controller
 
         switch ($range) {
             case 'week':
-                return [$now->copy()->startOfWeek()->startOfDay(), $now->copy()];
+                // Rolling last 7 days (today + previous 6 days). Avoids the
+                // "week resets on Monday" surprise and keeps the vs-last-period
+                // comparison an equal 7-day window. Matches how most analytics
+                // dashboards (GA, Stripe, etc.) present "this week".
+                return [$now->copy()->subDays(6)->startOfDay(), $now->copy()];
             case 'month':
-                return [$now->copy()->startOfMonth()->startOfDay(), $now->copy()];
+                // Rolling last 30 days, for the same consistency reasons.
+                return [$now->copy()->subDays(29)->startOfDay(), $now->copy()];
             case 'custom':
                 if ($f && $t) {
                     return [$f->copy()->startOfDay(), $t->copy()->endOfDay()];
