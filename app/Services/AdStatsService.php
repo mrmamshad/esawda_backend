@@ -49,6 +49,13 @@ class AdStatsService
             ->pluck('c', 'status')
             ->toArray();
 
+        // Active count excludes hidden posts (hide=1) to match the
+        // Active Products list which also filters hide=0.
+        $activeCount = (int) (clone $q())
+            ->where('status', 'active')
+            ->where('hide', '0')
+            ->count();
+
         return [
             'store' => [
                 'rating' => round($avgRating, 1),
@@ -60,7 +67,7 @@ class AdStatsService
             'wishlist_count' => $wishlistCount,
             'ads' => [
                 'total' => (int) (clone $q())->count(),
-                'active' => (int) ($countsByStatus['active'] ?? 0),
+                'active' => $activeCount,
                 'pending' => (int) ($countsByStatus['pending'] ?? 0),
                 'sold_out' => (int) ($countsByStatus['sold_out'] ?? 0),
                 'removed' => (int) ($countsByStatus['removed'] ?? 0),
