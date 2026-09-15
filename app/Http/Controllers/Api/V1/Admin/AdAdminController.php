@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\V1\AdDetailResource;
 use App\Jobs\RevalidateFrontendJob;
 use App\Models\Post;
 use App\Services\Mail\MailService;
@@ -40,7 +41,8 @@ class AdAdminController extends Controller
 
     public function show(int $id)
     {
-        return $this->ok(Post::with(['user', 'category', 'subCategory', 'customData'])->findOrFail($id));
+        $post = Post::with(['user', 'category', 'subCategory', 'customData'])->findOrFail($id);
+        return $this->ok(new AdDetailResource($post));
     }
 
     public function approve(int $id)
