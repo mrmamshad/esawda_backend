@@ -42,7 +42,7 @@ class AdAdminController extends Controller
     public function show(int $id)
     {
         $post = Post::with(['user', 'category', 'subCategory', 'customData'])->findOrFail($id);
-        return $this->ok(new AdDetailResource($post));
+        return new AdDetailResource($post);
     }
 
     public function approve(int $id)
