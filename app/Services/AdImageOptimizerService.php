@@ -93,24 +93,26 @@ class AdImageOptimizerService
             $img->autoOrient();
         }
 
-        // --- Display variant: resize + recompress the original in place ---
+        // --- Display variant: resize the original ---
         $this->resizeImagickWithin($img, $this->displayMaxWidth, $this->displayMaxHeight);
         $img->stripImage();
+
+        // WebP sibling BEFORE writing the original (Imagick objects can misbehave
+        // when reused after writeImage, so generate WebP from the clean state).
+        $this->writeImagickWebp($img, $displayWebp, $this->webpQuality);
+
         $this->applyImagickCompression($img, $displayPath);
         $img->writeImage($displayPath);
-
-        // --- Display WebP sibling (served first when present) ---
-        $this->writeImagickWebp($img, $displayWebp, $this->webpQuality);
 
         // --- Thumbnail variant ---
         $thumb = clone $img;
         $this->resizeImagickWithin($thumb, $this->thumbMaxWidth, $this->thumbMaxHeight);
         $thumb->stripImage();
+
+        $this->writeImagickWebp($thumb, $thumbWebp, $this->webpQuality);
+
         $this->applyImagickCompression($thumb, $thumbPath);
         $thumb->writeImage($thumbPath);
-
-        // --- Thumbnail WebP sibling ---
-        $this->writeImagickWebp($thumb, $thumbWebp, $this->webpQuality);
 
         $thumb->clear();
         $thumb->destroy();
@@ -122,13 +124,17 @@ class AdImageOptimizerService
     {
         try {
             $webp = clone $source;
-            $webp->setImageFormat('webp');
-            $webp->setImageCompressionQuality($quality);
             // Flatten transparency onto white so PNG photos become small WebPs.
             if ($webp->getImageAlphaChannel()) {
                 $webp->setImageBackgroundColor('white');
-                $webp = $webp->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+                $flattened = $webp->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+                $webp->clear();
+                $webp->destroy();
+                $webp = $flattened;
             }
+            // Set format/quality AFTER any merge (merge returns a fresh object).
+            $webp->setImageFormat('webp');
+            $webp->setImageCompressionQuality($quality);
             $webp->stripImage();
             $webp->writeImage($targetPath);
             $webp->clear();
