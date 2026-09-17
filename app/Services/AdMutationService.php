@@ -49,10 +49,11 @@ class AdMutationService
 
     public function deleteImage(Post $post, string $filename): void
     {
-        $imgs = $this->currentImages($post);
-        $imgs = array_values(array_filter($imgs, fn ($n) => $n !== $filename));
+        $filename = basename($filename);
+        $imgs     = $this->currentImages($post);
+        $imgs     = array_values(array_filter($imgs, fn ($n) => basename($n) !== $filename));
         AdImage::deleteAllVariants($filename);
-        $post->screen_shot = json_encode($imgs);
+        $post->screen_shot = $imgs ? json_encode($imgs) : null;
         $post->save();
     }
 
