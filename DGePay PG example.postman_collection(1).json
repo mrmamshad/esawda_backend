@@ -1,0 +1,460 @@
+{
+  "info": {
+    "_postman_id": "13cff323-79b2-4e59-bf1d-fa61387f00e2",
+    "name": "Merchant PG example",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12427404"
+  },
+  "item": [
+    {
+      "name": "Authenticate Copy",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Parse response body",
+              "let response = pm.response.json();",
+              "",
+              "// Check if status code is 200 and access_token exists",
+              "if (pm.response.code === 200 && response.data && response.data.access_token) {",
+              "    // Save access_token to environment variable",
+              "    pm.environment.set(\"access_token\", \"Bearer \" + response.data.access_token);",
+              "",
+              "    // Optionally store the expiry_time as well",
+              "    if (response.data.expiry_time) {",
+              "        pm.environment.set(\"token_expiry_time\", response.data.expiry_time);",
+              "    }",
+              "",
+              "    console.log(\"Access token and expiry time saved to environment.\");",
+              "} else {",
+              "    console.warn(\"Access token not found or request failed.\");",
+              "}",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "password",
+              "value": "a487e7adeb7d6af7",
+              "type": "string"
+            },
+            {
+              "key": "username",
+              "value": "e138a51e5bdd412dbd303a56be11ecab",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "https://api-uat.dgepay.net/dipon/v3/payment_gateway/authenticate",
+          "protocol": "https",
+          "host": [
+            "api-uat",
+            "dgepay",
+            "net"
+          ],
+          "path": [
+            "dipon",
+            "v3",
+            "payment_gateway",
+            "authenticate"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "InitiatePayment Copy",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Postman Pre-request Script for Signature Generation",
+              "// Uses environment variables for API_KEY and SECRET_KEY",
+              "// Handles amount formatting to match server behavior",
+              "",
+              "// Get API key and secret key from environment variables",
+              "const API_KEY = \"6a04cdb22975427993bad1e1cd4a5ac4\";",
+              "const SECRET_KEY = \"a487e7adeb7d6af7\";",
+              "",
+              "// Get the request body (assuming it's in the \"Body\" tab)",
+              "const requestBody = pm.request.body.raw;",
+              "",
+              "// Parse the JSON payload",
+              "let payload;",
+              "try {",
+              "    payload = JSON.parse(requestBody);",
+              "    console.log(\"request payload : \",payload);",
+              "} catch (e) {",
+              "    console.error(\"Error parsing request body:\", e);",
+              "    return;",
+              "}",
+              "",
+              "// Function to normalize amount values to match server behavior",
+              "function normalizeAmount(value) {",
+              "    if (typeof value === 'number') {",
+              "        // Convert integers to decimal format (e.g., 15 -> 15.0)",
+              "        if (Number.isInteger(value)) {",
+              "            return value + '.0';",
+              "        }",
+              "        // For decimals, return as string to preserve exact format",
+              "        return value.toString();",
+              "    }",
+              "    return value;",
+              "}",
+              "",
+              "// Function to create checksum string (same logic as Java)",
+              "function createCheckSum(payload) {",
+              "    function buildChecksumString(obj, checksumBuilder) {",
+              "        // Sort keys alphabetically",
+              "        const sortedKeys = Object.keys(obj).sort();",
+              "        ",
+              "        for (const key of sortedKeys) {",
+              "            const value = obj[key];",
+              "            checksumBuilder.push(key);",
+              "            ",
+              "            if (value === null) {",
+              "                checksumBuilder.push(\"null\");",
+              "            } else if (typeof value === 'object' && !Array.isArray(value)) {",
+              "                // Handle nested objects",
+              "                buildChecksumString(value, checksumBuilder);",
+              "            } else {",
+              "                // Handle primitive values and strings - remove spaces and colons",
+              "                let stringValue;",
+              "                if (key === 'amount') {",
+              "                    // Special handling for amount field",
+              "                    stringValue = normalizeAmount(value);",
+              "                } else {",
+              "                    stringValue = String(value);",
+              "                }",
+              "                // Remove spaces and colons from all string values",
+              "                stringValue = stringValue.replace(/\\s+/g, '').replace(/:/g, '');",
+              "                checksumBuilder.push(stringValue);",
+              "            }",
+              "        }",
+              "    }",
+              "    ",
+              "    const checksumParts = [];",
+              "    buildChecksumString(payload, checksumParts);",
+              "    return checksumParts.join('');",
+              "}",
+              "",
+              "// Function to generate HMAC-SHA256 signature",
+              "function generateHMACSignature(apiKey, body) {",
+              "    // Use CryptoJS for HMAC-SHA256",
+              "    const hash = CryptoJS.HmacSHA256(body, apiKey);",
+              "    return CryptoJS.enc.Base64.stringify(hash);",
+              "}",
+              "",
+              "// Function to encrypt payload using AES",
+              "function encryptPayload(body, secretKey) {",
+              "    // Ensure key is exactly 16 bytes (128 bits)",
+              "    const keyBytes = CryptoJS.enc.Utf8.parse(secretKey);",
+              "    const key16 = CryptoJS.enc.Utf8.parse(secretKey.substring(0, 16));",
+              "    ",
+              "    // Encrypt using AES-ECB",
+              "    const encrypted = CryptoJS.AES.encrypt(body, key16, {",
+              "        mode: CryptoJS.mode.ECB,",
+              "        padding: CryptoJS.pad.Pkcs7",
+              "    });",
+              "    ",
+              "    return encrypted.toString();",
+              "}",
+              "",
+              "// Generate checksum string",
+              "const checksumString = createCheckSum(payload);",
+              "console.log(\"Checksum String:\", checksumString);",
+              "",
+              "// Generate signature",
+              "const signature = generateHMACSignature(API_KEY, checksumString);",
+              "console.log(\"Generated Signature:\", signature);",
+              "",
+              "// Encrypt payload",
+              "const encryptedPayload = encryptPayload(requestBody, SECRET_KEY);",
+              "console.log(\"Encrypted Payload:\", encryptedPayload);",
+              "",
+              "// Set the signature in the request header",
+              "pm.request.headers.add({",
+              "    key: 'Signature',",
+              "    value: signature",
+              "});",
+              "",
+              "// Set the encrypted payload as the request body",
+              "pm.request.body.update(encryptedPayload, false);",
+              "",
+              "// Also set Content-Type to text/plain",
+              "pm.request.headers.add({",
+              "    key: 'Content-Type',",
+              "    value: 'text/plain'",
+              "});",
+              "",
+              "// Log for debugging",
+              "console.log(\"API Key used:\", API_KEY);",
+              "console.log(\"Secret Key used:\", SECRET_KEY);",
+              "console.log(\"Request updated with signature:\", signature);",
+              "console.log(\"Request body updated with encrypted payload\");"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{access_token}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlMTM4YTUxZTViZGQ0MTJkYmQzMDNhNTZiZTExZWNhYiIsImV4cCI6MTc3MzIwOTIwOCwicm9sZXMiOlsiUk9MRV9NRVJDSEFOVCJdfQ._AqewA3aaqFpZo-rBAu1kc5DjuwMqlUHn0D5k33DvNY",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"amount\": 100,\n    \"customer_token\": null,\n    \"note\": \"Purchasing E Ticket\",\n    \"payee_information\": {\n        \"dial_code\": \"+88\",\n        \"phone_number\": \"01721915013\"\n    },\n    \"payment_method\": null,\n    \"redirect_url\": \"https://www.google.com/\",\n    \"unique_txn_id\": \"177709998004345443232362\",\n    \"meta_data\": {\n        \"custom_field_1\": \"123293742983472398432\",\n        \"custom_field_2\": \"John Doe Jasdefasdf\",\n        \"custom_field_3\": \"+0880 237429348238\"\n    }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://api-uat.dgepay.net/dipon/v3/payment_gateway/initiate_payment",
+          "protocol": "https",
+          "host": [
+            "api-uat",
+            "dgepay",
+            "net"
+          ],
+          "path": [
+            "dipon",
+            "v3",
+            "payment_gateway",
+            "initiate_payment"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Transaction Check Status Copy",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Postman Pre-request Script for Signature Generation",
+              "// Uses environment variables for API_KEY and SECRET_KEY",
+              "// Handles amount formatting to match server behavior",
+              "",
+              "// Get API key and secret key from environment variables",
+              "const API_KEY = \"6a04cdb22975427993bad1e1cd4a5ac4\";",
+              "const SECRET_KEY = \"a487e7adeb7d6af7\";",
+              "",
+              "// Get the request body (assuming it's in the \"Body\" tab)",
+              "const requestBody = pm.request.body.raw;",
+              "",
+              "// Parse the JSON payload",
+              "let payload;",
+              "try {",
+              "    payload = JSON.parse(requestBody);",
+              "    console.log(\"request payload : \",payload);",
+              "} catch (e) {",
+              "    console.error(\"Error parsing request body:\", e);",
+              "    return;",
+              "}",
+              "",
+              "// Function to normalize amount values to match server behavior",
+              "function normalizeAmount(value) {",
+              "    if (typeof value === 'number') {",
+              "        // Convert integers to decimal format (e.g., 15 -> 15.0)",
+              "        if (Number.isInteger(value)) {",
+              "            return value + '.0';",
+              "        }",
+              "        // For decimals, return as string to preserve exact format",
+              "        return value.toString();",
+              "    }",
+              "    return value;",
+              "}",
+              "",
+              "// Function to create checksum string (same logic as Java)",
+              "function createCheckSum(payload) {",
+              "    function buildChecksumString(obj, checksumBuilder) {",
+              "        // Sort keys alphabetically",
+              "        const sortedKeys = Object.keys(obj).sort();",
+              "        ",
+              "        for (const key of sortedKeys) {",
+              "            const value = obj[key];",
+              "            checksumBuilder.push(key);",
+              "            ",
+              "            if (value === null) {",
+              "                checksumBuilder.push(\"null\");",
+              "            } else if (typeof value === 'object' && !Array.isArray(value)) {",
+              "                // Handle nested objects",
+              "                buildChecksumString(value, checksumBuilder);",
+              "            } else {",
+              "                // Handle primitive values and strings - remove spaces and colons",
+              "                let stringValue;",
+              "                if (key === 'amount') {",
+              "                    // Special handling for amount field",
+              "                    stringValue = normalizeAmount(value);",
+              "                } else {",
+              "                    stringValue = String(value);",
+              "                }",
+              "                // Remove spaces and colons from all string values",
+              "                stringValue = stringValue.replace(/\\s+/g, '').replace(/:/g, '');",
+              "                checksumBuilder.push(stringValue);",
+              "            }",
+              "        }",
+              "    }",
+              "    ",
+              "    const checksumParts = [];",
+              "    buildChecksumString(payload, checksumParts);",
+              "    return checksumParts.join('');",
+              "}",
+              "",
+              "// Function to generate HMAC-SHA256 signature",
+              "function generateHMACSignature(apiKey, body) {",
+              "    // Use CryptoJS for HMAC-SHA256",
+              "    const hash = CryptoJS.HmacSHA256(body, apiKey);",
+              "    return CryptoJS.enc.Base64.stringify(hash);",
+              "}",
+              "",
+              "// Function to encrypt payload using AES",
+              "function encryptPayload(body, secretKey) {",
+              "    // Ensure key is exactly 16 bytes (128 bits)",
+              "    const keyBytes = CryptoJS.enc.Utf8.parse(secretKey);",
+              "    const key16 = CryptoJS.enc.Utf8.parse(secretKey.substring(0, 16));",
+              "    ",
+              "    // Encrypt using AES-ECB",
+              "    const encrypted = CryptoJS.AES.encrypt(body, key16, {",
+              "        mode: CryptoJS.mode.ECB,",
+              "        padding: CryptoJS.pad.Pkcs7",
+              "    });",
+              "    ",
+              "    return encrypted.toString();",
+              "}",
+              "",
+              "// Generate checksum string",
+              "const checksumString = createCheckSum(payload);",
+              "console.log(\"Checksum String:\", checksumString);",
+              "",
+              "// Generate signature",
+              "const signature = generateHMACSignature(API_KEY, checksumString);",
+              "console.log(\"Generated Signature:\", signature);",
+              "",
+              "// Encrypt payload",
+              "const encryptedPayload = encryptPayload(requestBody, SECRET_KEY);",
+              "console.log(\"Encrypted Payload:\", encryptedPayload);",
+              "",
+              "// Set the signature in the request header",
+              "pm.request.headers.add({",
+              "    key: 'Signature',",
+              "    value: signature",
+              "});",
+              "",
+              "// Set the encrypted payload as the request body",
+              "pm.request.body.update(encryptedPayload, false);",
+              "",
+              "// Also set Content-Type to text/plain",
+              "pm.request.headers.add({",
+              "    key: 'Content-Type',",
+              "    value: 'text/plain'",
+              "});",
+              "",
+              "// Log for debugging",
+              "console.log(\"API Key used:\", API_KEY);",
+              "console.log(\"Secret Key used:\", SECRET_KEY);",
+              "console.log(\"Request updated with signature:\", signature);",
+              "console.log(\"Request body updated with encrypted payload\");"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{access_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"unique_txn_id\": \"177709998004345443232362\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://api-uat.dgepay.net/dipon/v3/payment_gateway/check_transaction_status",
+          "protocol": "https",
+          "host": [
+            "api-uat",
+            "dgepay",
+            "net"
+          ],
+          "path": [
+            "dipon",
+            "v3",
+            "payment_gateway",
+            "check_transaction_status"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

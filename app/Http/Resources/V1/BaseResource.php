@@ -38,8 +38,8 @@ abstract class BaseResource extends JsonResource
 
         return array_map(static fn (string $name) => [
             'filename' => basename($name),
-            'url'      => AdImage::displayUrl($name),
-            'thumb'    => AdImage::thumbUrl($name),
+            'url' => AdImage::displayUrl($name),
+            'thumb' => AdImage::thumbUrl($name),
         ], $names);
     }
 

@@ -1,0 +1,81 @@
+==========================================================================
+ eSawda — Email Deliverability DNS Records (Namecheap Advanced DNS)
+ Domain: esawda.com   |   Mail server IP: 63.250.41.9
+==========================================================================
+
+ STATUS (updated 2026-09-14 13:26):
+   [DONE]  DKIM  — full key now in DNS, Gmail no longer says "unauthenticated"
+   [DONE]  DMARC — correct
+   [TODO]  SPF   — STILL TWO records. Delete the one WITHOUT the IP.
+   [WAIT]  Gmail is throttling the server IP (JFE050005 "content policy")
+           because of earlier bounces. This clears on its own over a few
+           hours/1-2 days once no new bounces happen. Not an auth problem.
+==========================================================================
+
+WHY: Gmail is bouncing all mail with "sender unauthenticated (SPF/DKIM)".
+Root cause found:
+  1. DKIM public key in DNS is TRUNCATED (only ~60 of 395 chars saved).
+  2. There are TWO SPF records (must be exactly ONE).
+Fix the 3 records below EXACTLY, then the emails will deliver.
+
+Where: Namecheap -> Domain List -> esawda.com -> Manage -> Advanced DNS
+
+
+--------------------------------------------------------------------------
+ RECORD 1  —  DKIM   (MOST IMPORTANT — currently broken/truncated)
+--------------------------------------------------------------------------
+Action : EDIT the existing "esawda._domainkey" TXT record. Delete its
+         current value completely, then paste the FULL value below.
+
+Type   : TXT Record
+Host   : esawda._domainkey
+Value  : (paste the ENTIRE single line below — must end with ...wIDAQAB)
+
+v=DKIM1; h=sha256; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7+QWV2v5RFvVScWLIXWKllw4Dm10eTE5JLTDkCtAC8wzlJZ98xdchlRMTGs9a64CfOZH+94DfHK1TZ6qlpqo54fEjHXBIV5kZSCaynsFApX7/nhy1VM0t8aAE71GIdtidk9HH+YG7dwcSjc3ghFY0tSHnyyH/6NjBFnwfxs/4nWCeKfqN5ucs1ULPiKdhfZn2jnbW2DXv4xLFL81YEIUOlcfhTN/oZrjjb6A8BRZnU306ECgShs7lyBUkqIirKnPJbAk+NHXFrFp6ZQz0M4agJvw4sgiEsgQYP7OOxzCwPF5svhCnJ51rgzrzcwCodDYdJxmTyAcLpJljmGWaxaoTwIDAQAB
+
+*** CHECK: after pasting, the value box must END WITH  wIDAQAB
+*** If it ends with "...DkCt" it got cut again — clear and paste once more.
+
+
+--------------------------------------------------------------------------
+ RECORD 2  —  SPF   (you currently have TWO — keep ONE, delete the other)
+--------------------------------------------------------------------------
+Action : DELETE the old SPF record that has NO server IP:
+             v=spf1 include:zohomail.com ~all        <-- DELETE THIS ONE
+
+         KEEP (or edit to) exactly this single SPF record:
+
+Type   : TXT Record
+Host   : @
+Value  :
+
+v=spf1 ip4:63.250.41.9 include:zohomail.com ~all
+
+*** There must be ONLY ONE record starting with "v=spf1". Two = invalid.
+*** (The "zoho-verification=..." TXT record is fine — leave it.)
+
+
+--------------------------------------------------------------------------
+ RECORD 3  —  DMARC   (already added correctly — leave as is)
+--------------------------------------------------------------------------
+Type   : TXT Record
+Host   : _dmarc
+Value  :
+
+v=DMARC1; p=none; rua=mailto:noreply@esawda.com
+
+
+==========================================================================
+ AFTER SAVING
+==========================================================================
+1. Save all changes in Namecheap.
+2. Wait ~5–15 minutes for DNS to propagate.
+3. Tell me — I'll verify from the server (key length + send a real test
+   to your Gmail and confirm it is delivered, not bounced).
+
+Notes:
+- Server side is already done: opendkim signs mail correctly
+  (opendkim-testkey = "key OK"), MAIL_FROM set to noreply@esawda.com,
+  config cache rebuilt, queue worker restarted.
+- The ONLY thing blocking delivery is the truncated DKIM + duplicate SPF.
+==========================================================================
