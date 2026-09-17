@@ -162,11 +162,14 @@ class AdMineController extends Controller
         return $this->ok(new AdDetailResource($post->fresh()));
     }
 
-    public function deleteImage(int $id, string $filename, Request $request)
+    public function deleteImage(int $id, Request $request)
     {
+        $filename = basename((string) $request->query('filename'));
+        abort_if($filename === '', 422, 'filename is required');
+
         $post = Post::findOrFail($id);
         $this->authorize('update', $post);
-        $this->svc->deleteImage($post, basename($filename));
+        $this->svc->deleteImage($post, $filename);
 
         return $this->noContent();
     }
