@@ -55,15 +55,22 @@ class AdImageOptimizerService
             @mkdir(dirname($thumbPath), 0775, true);
         }
 
+        // WebP siblings live next to the originals with a .webp extension, e.g.
+        //   products/ad_57_x.png        (original, kept for back-compat)
+        //   products/ad_57_x.png.webp   (optimized, served when present)
+        //   products/thumb/ad_57_x.png.webp
+        $displayWebp = $displayPath.'.webp';
+        $thumbWebp = $thumbPath.'.webp';
+
         try {
             if (extension_loaded('imagick')) {
-                $this->optimizeWithImagick($displayPath, $thumbPath);
+                $this->optimizeWithImagick($displayPath, $thumbPath, $displayWebp, $thumbWebp);
 
                 return;
             }
 
             if (extension_loaded('gd')) {
-                $this->optimizeWithGd($displayPath, $thumbPath);
+                $this->optimizeWithGd($displayPath, $thumbPath, $displayWebp, $thumbWebp);
 
                 return;
             }
@@ -78,7 +85,7 @@ class AdImageOptimizerService
         }
     }
 
-    private function optimizeWithImagick(string $displayPath, string $thumbPath): void
+    private function optimizeWithImagick(string $displayPath, string $thumbPath, string $displayWebp, string $thumbWebp): void
     {
         $img = new \Imagick($displayPath);
 
@@ -86,21 +93,52 @@ class AdImageOptimizerService
             $img->autoOrient();
         }
 
+        // --- Display variant: resize + recompress the original in place ---
         $this->resizeImagickWithin($img, $this->displayMaxWidth, $this->displayMaxHeight);
         $img->stripImage();
         $this->applyImagickCompression($img, $displayPath);
         $img->writeImage($displayPath);
 
+        // --- Display WebP sibling (served first when present) ---
+        $this->writeImagickWebp($img, $displayWebp, $this->webpQuality);
+
+        // --- Thumbnail variant ---
         $thumb = clone $img;
         $this->resizeImagickWithin($thumb, $this->thumbMaxWidth, $this->thumbMaxHeight);
         $thumb->stripImage();
         $this->applyImagickCompression($thumb, $thumbPath);
         $thumb->writeImage($thumbPath);
 
+        // --- Thumbnail WebP sibling ---
+        $this->writeImagickWebp($thumb, $thumbWebp, $this->webpQuality);
+
         $thumb->clear();
         $thumb->destroy();
         $img->clear();
         $img->destroy();
+    }
+
+    private function writeImagickWebp(\Imagick $source, string $targetPath, int $quality): void
+    {
+        try {
+            $webp = clone $source;
+            $webp->setImageFormat('webp');
+            $webp->setImageCompressionQuality($quality);
+            // Flatten transparency onto white so PNG photos become small WebPs.
+            if ($webp->getImageAlphaChannel()) {
+                $webp->setImageBackgroundColor('white');
+                $webp = $webp->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+            }
+            $webp->stripImage();
+            $webp->writeImage($targetPath);
+            $webp->clear();
+            $webp->destroy();
+        } catch (\Throwable $e) {
+            Log::warning('WebP sibling generation failed', [
+                'target' => basename($targetPath),
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function resizeImagickWithin(\Imagick $img, int $maxWidth, int $maxHeight): void
@@ -136,7 +174,7 @@ class AdImageOptimizerService
         }
     }
 
-    private function optimizeWithGd(string $displayPath, string $thumbPath): void
+    private function optimizeWithGd(string $displayPath, string $thumbPath, string $displayWebp, string $thumbWebp): void
     {
         $info = @getimagesize($displayPath);
         if (!$info || empty($info['mime'])) {
@@ -157,13 +195,39 @@ class AdImageOptimizerService
 
         $display = $this->gdResizeWithin($src, $this->displayMaxWidth, $this->displayMaxHeight);
         $this->gdSave($display, $displayPath, $info['mime']);
+        $this->gdSaveWebp($display, $displayWebp);
 
         $thumb = $this->gdResizeWithin($display, $this->thumbMaxWidth, $this->thumbMaxHeight);
         $this->gdSave($thumb, $thumbPath, $info['mime']);
+        $this->gdSaveWebp($thumb, $thumbWebp);
 
         imagedestroy($thumb);
         imagedestroy($display);
         imagedestroy($src);
+    }
+
+    private function gdSaveWebp(\GdImage $img, string $targetPath): void
+    {
+        if (!function_exists('imagewebp')) {
+            return;
+        }
+
+        try {
+            // Flatten alpha onto white so transparent PNGs become small WebPs.
+            $w = imagesx($img);
+            $h = imagesy($img);
+            $flat = imagecreatetruecolor($w, $h);
+            $white = imagecolorallocate($flat, 255, 255, 255);
+            imagefilledrectangle($flat, 0, 0, $w, $h, $white);
+            imagecopy($flat, $img, 0, 0, 0, 0, $w, $h);
+            imagewebp($flat, $targetPath, $this->webpQuality);
+            imagedestroy($flat);
+        } catch (\Throwable $e) {
+            Log::warning('WebP sibling generation failed (gd)', [
+                'target' => basename($targetPath),
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function autoOrientGd(\GdImage $img, string $path, string $mime): \GdImage

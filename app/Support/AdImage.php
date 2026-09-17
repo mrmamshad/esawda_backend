@@ -53,8 +53,14 @@ class AdImage
 
         $name = ltrim($name, '/');
         $base = rtrim((string) config('app.url'), '/').'/storage/';
+        $path = self::displayPath($name);
 
-        return $base.self::displayPath($name);
+        // Prefer the optimized WebP sibling when it exists.
+        if (Storage::disk('public')->exists($path.'.webp')) {
+            return $base.$path.'.webp';
+        }
+
+        return $base.$path;
     }
 
     public static function thumbUrl(string $name): string
@@ -65,9 +71,17 @@ class AdImage
 
         $name = ltrim($name, '/');
         $disk = Storage::disk('public');
+        $base = rtrim((string) config('app.url'), '/').'/storage/';
+        $thumb = self::thumbPath($name);
 
-        if ($disk->exists(self::thumbPath($name))) {
-            return rtrim((string) config('app.url'), '/').'/storage/'.self::thumbPath($name);
+        // Prefer the optimized WebP thumbnail, then the plain thumbnail,
+        // then fall back to the (WebP or original) display image.
+        if ($disk->exists($thumb.'.webp')) {
+            return $base.$thumb.'.webp';
+        }
+
+        if ($disk->exists($thumb)) {
+            return $base.$thumb;
         }
 
         return self::displayUrl($name);
@@ -82,7 +96,9 @@ class AdImage
         $name = ltrim($name, '/');
         Storage::disk('public')->delete([
             self::displayPath($name),
+            self::displayPath($name).'.webp',
             self::thumbPath($name),
+            self::thumbPath($name).'.webp',
         ]);
     }
 }

@@ -14,7 +14,7 @@ class OptimizeAdImages extends Command
         {--chunk=200 : Rows per DB chunk}
         {--sync : Run inline (no queue) for maintenance windows}';
 
-    protected $description = 'Queue optimization jobs for stored ad images (display + thumb variants).';
+    protected $description = 'Queue optimization jobs for stored ad images (display + thumb + WebP variants).';
 
     public function handle(): int
     {
