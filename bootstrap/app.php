@@ -28,6 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Ensure CORS runs before any auth middleware so that OPTIONS
+        // preflight requests are answered even on authenticated routes.
+        $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
+
         $middleware->alias([
             'quickad.auth' => EnsureLegacyLogin::class,
             'admin' => EnsureAdmin::class,
