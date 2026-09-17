@@ -150,7 +150,7 @@ Route::prefix('v1')->group(function () {
         Route::put('ads/{id}', [AdMineController::class, 'update'])->whereNumber('id');
         Route::delete('ads/{id}', [AdMineController::class, 'destroy'])->whereNumber('id');
         Route::post('ads/{id}/images', [AdMineController::class, 'addImages'])->whereNumber('id');
-        Route::delete('ads/{id}/images/{filename}', [AdMineController::class, 'deleteImage'])->whereNumber('id');
+        Route::delete('ads/{id}/images/{filename}', [AdMineController::class, 'deleteImage'])->whereNumber('id')->where('filename', '[^/]+');
         Route::post('ads/{id}/{action}', [AdMineController::class, 'action'])
             ->whereNumber('id')
             ->whereIn('action', ['hide', 'unhide', 'resubmit', 'sold-out', 'restock', 'remove', 'publish']);
