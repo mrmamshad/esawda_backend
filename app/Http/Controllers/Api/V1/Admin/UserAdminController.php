@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\V1\UserResource;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -42,32 +43,69 @@ class UserAdminController extends Controller
 
     public function show(int $id)
     {
-        return $this->ok(User::findOrFail($id));
+        $user = User::withCount([
+            'posts as listings_total',
+            'posts as listings_active' => fn ($a) => $a->where('status', 'active'),
+            'posts as listings_pending' => fn ($a) => $a->where('status', 'pending'),
+        ])->findOrFail($id);
+
+        return $this->ok(new UserResource($user));
     }
 
     public function update(int $id, Request $request)
     {
         $data = $request->validate([
-            'name' => ['sometimes', 'string', 'max:150'],
-            'email' => ['sometimes', 'email', 'max:150'],
-            'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
-            'user_type' => ['sometimes', 'in:user,admin'],
-            'group_id' => ['sometimes', 'string', 'max:60'],
-            'status' => ['sometimes', 'in:0,1'],
-            // Per-account posting override (also the per-shop switch):
-            // inherit = global rules, free = post without subscription,
-            // blocked = cannot post at all.
-            'post_policy' => ['sometimes', 'in:inherit,free,blocked'],
+            'name'             => ['sometimes', 'string', 'max:150'],
+            'email'            => ['sometimes', 'email', 'max:150'],
+            'phone'            => ['sometimes', 'nullable', 'string', 'max:30'],
+            'address'          => ['sometimes', 'nullable', 'string', 'max:255'],
+            'user_type'        => ['sometimes', 'in:user,admin'],
+            'group_id'         => ['sometimes', 'string', 'max:60'],
+            'status'           => ['sometimes', 'in:0,1'],
+            'post_policy'      => ['sometimes', 'in:inherit,free,blocked'],
+            // Shop fields
+            'shop_name'        => ['sometimes', 'nullable', 'string', 'max:150'],
+            'shop_address'     => ['sometimes', 'nullable', 'string', 'max:255'],
+            'shop_category'    => ['sometimes', 'nullable', 'string', 'max:100'],
+            'shop_description' => ['sometimes', 'nullable', 'string', 'max:2000'],
         ]);
+
         $user = User::findOrFail($id);
 
-        // Explicit, allow-listed field mapping. `user_type` is gated to the
-        // enum already validated above (`in:user,admin`); `group_id`/`status`
-        // are pinned to the small validated set — never a raw passthrough.
-        $safe = array_intersect_key($data, array_flip(['name', 'email', 'phone', 'user_type', 'group_id', 'status', 'post_policy']));
+        $safe = array_intersect_key($data, array_flip([
+            'name', 'email', 'phone', 'address', 'user_type', 'group_id', 'status', 'post_policy',
+            'shop_name', 'shop_address', 'shop_category', 'shop_description',
+        ]));
         $user->fill($safe)->save();
 
-        return $this->ok($user->fresh());
+        // Handle photo/document uploads
+        $imageBase = rtrim(config('app.url'), '/').'/storage/profile/';
+        if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
+            $path = $request->file('avatar')->store('profile', 'public');
+            $user->forceFill(['image' => basename($path)])->save();
+        }
+        if ($request->hasFile('cover') && $request->file('cover')->isValid()) {
+            $path = $request->file('cover')->store('profile', 'public');
+            $user->forceFill(['cover' => basename($path)])->save();
+        }
+        if ($request->hasFile('banner') && $request->file('banner')->isValid()) {
+            $path = $request->file('banner')->store('profile', 'public');
+            $user->forceFill(['shop_banner' => basename($path)])->save();
+        }
+        if ($request->hasFile('documents.nid') && $request->file('documents.nid')->isValid()) {
+            $path = $request->file('documents.nid')->store('profile/documents', 'public');
+            $docs = $user->shop_documents ?? [];
+            $docs['nid'] = basename($path);
+            $user->forceFill(['shop_documents' => $docs])->save();
+        }
+        if ($request->hasFile('documents.trade_licence') && $request->file('documents.trade_licence')->isValid()) {
+            $path = $request->file('documents.trade_licence')->store('profile/documents', 'public');
+            $docs = $user->shop_documents ?? [];
+            $docs['trade_licence'] = basename($path);
+            $user->forceFill(['shop_documents' => $docs])->save();
+        }
+
+        return $this->ok(new UserResource($user->fresh()));
     }
 
     public function ban(int $id)
