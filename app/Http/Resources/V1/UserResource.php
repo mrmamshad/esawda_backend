@@ -40,14 +40,14 @@ class UserResource extends BaseResource
             'avatar_url' => $imageBase.($this->image && $this->image !== 'default_user.png' ? $this->image : 'default_user.png'),
             'avatar_set' => !empty($this->image) && $this->image !== 'default_user.png',
             'cover_url' => $this->cover ? $imageBase.$this->cover : null,
-            'documents' => $this->when(isset($this->shop_documents), function () use ($imageBase) {
+            'documents' => (function () {
                 $docs = $this->shop_documents ?? [];
-                $docBase = rtrim(config('app.url'), '/').'/storage/profile/documents/';
+                $storageBase = rtrim(config('app.url'), '/').'/storage/';
                 return [
-                    'nid'            => isset($docs['nid']) ? $docBase.$docs['nid'] : null,
-                    'trade_licence'  => isset($docs['trade_licence']) ? $docBase.$docs['trade_licence'] : null,
+                    'nid'           => isset($docs['nid'])           ? $storageBase.$docs['nid']           : null,
+                    'trade_licence' => isset($docs['trade_licence']) ? $storageBase.$docs['trade_licence'] : null,
                 ];
-            }, ['nid' => null, 'trade_licence' => null]),
+            })(),
             'listings_total'   => $this->whenLoaded('posts', fn() => $this->listings_total ?? null, $this->listings_total ?? null),
             'listings_active'  => $this->whenLoaded('posts', fn() => $this->listings_active ?? null, $this->listings_active ?? null),
             'listings_pending' => $this->whenLoaded('posts', fn() => $this->listings_pending ?? null, $this->listings_pending ?? null),
