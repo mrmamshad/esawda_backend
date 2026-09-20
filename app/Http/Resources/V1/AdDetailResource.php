@@ -14,6 +14,8 @@ class AdDetailResource extends BaseResource
 
         return [
             'id' => (int) $this->id,
+            'status' => $this->status,
+            'condition' => $this->condition,
             'slug' => $this->slug,
             'url_slug' => $this->id.'-'.($this->slug ?: 'ad'),
             'title' => $this->product_name,
