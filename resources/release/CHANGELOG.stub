@@ -1,0 +1,14 @@
+# Changelog
+
+All notable changes to this product are documented here.
+
+## v{{VERSION}} — {{DATE}}
+
+- Packaged release of the eSawda platform (Laravel API + Next.js frontend).
+- Image optimization across public pages (next/image, AVIF/WebP).
+- Admin blog management with rich-text editor, slug support and status control.
+- Performance: batched admin dashboard queries.
+
+---
+
+_For older history, see the repository commit log._

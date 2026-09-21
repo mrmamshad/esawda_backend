@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Admin\AdPlacementAdminController;
 use App\Http\Controllers\Api\V1\Admin\BlogAdminController;
 use App\Http\Controllers\Api\V1\Admin\CategoryAdminController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Api\V1\Admin\LicenseAdminController;
 use App\Http\Controllers\Api\V1\Admin\OrderAdminController;
 use App\Http\Controllers\Api\V1\Admin\PlanAdminController;
 use App\Http\Controllers\Api\V1\Admin\PremiumUpgradeAdminController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CheckoutController;
 use App\Http\Controllers\Api\V1\ContentController;
 use App\Http\Controllers\Api\V1\CountryController;
+use App\Http\Controllers\Api\V1\DownloadController;
 use App\Http\Controllers\Api\V1\FavouriteController;
 use App\Http\Controllers\Api\V1\FilterSchemaController;
 use App\Http\Controllers\Api\V1\HomeController;
@@ -58,6 +60,16 @@ Route::prefix('v1')->group(function () {
     Route::post('payments/sslcommerz/success', [PaymentCallbackController::class, 'success']);
     Route::post('payments/sslcommerz/fail', [PaymentCallbackController::class, 'fail']);
     Route::post('payments/sslcommerz/cancel', [PaymentCallbackController::class, 'cancel']);
+
+    /* ---- Source-code delivery (public, license-gated) ----------------- */
+    // Validate is throttled to deter license-key guessing; the file route is
+    // protected by a signed, time-limited URL issued on successful validate.
+    Route::post('download/validate', [DownloadController::class, 'validateLicense'])
+        ->middleware('throttle:10,1');
+    Route::get('download/file/{license}', [DownloadController::class, 'file'])
+        ->middleware('signed')
+        ->whereNumber('license')
+        ->name('download.file');
     Route::post('payments/sslcommerz/ipn', [PaymentCallbackController::class, 'ipn']);
     Route::get('payments/dgepay/return', [PaymentCallbackController::class, 'dgePayReturn'])
         ->middleware('throttle:30,1')
@@ -235,5 +247,13 @@ Route::prefix('v1')->group(function () {
 
         Route::get('premium-upgrades', [PremiumUpgradeAdminController::class, 'index']);
         Route::put('premium-upgrades', [PremiumUpgradeAdminController::class, 'update']);
+
+        // Source-code download licenses.
+        Route::get('licenses', [LicenseAdminController::class, 'index']);
+        Route::post('licenses', [LicenseAdminController::class, 'store']);
+        Route::get('licenses/{id}', [LicenseAdminController::class, 'show'])->whereNumber('id');
+        Route::patch('licenses/{id}', [LicenseAdminController::class, 'update'])->whereNumber('id');
+        Route::post('licenses/{id}/revoke', [LicenseAdminController::class, 'revoke'])->whereNumber('id');
+        Route::delete('licenses/{id}', [LicenseAdminController::class, 'destroy'])->whereNumber('id');
     });
 });

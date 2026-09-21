@@ -1,0 +1,45 @@
+# eSawda — Classified & Marketplace Platform (v{{VERSION}})
+
+Thank you for your purchase! This package contains the **complete source code**
+for the eSawda platform: a Laravel REST API backend and a Next.js (App Router)
+frontend.
+
+Released: {{DATE}}
+
+---
+
+## 📦 What's inside
+
+```
+esawda-marketplace-v{{VERSION}}/
+├── README.md            ← you are here
+├── INSTALLATION.md      ← full setup guide (start here to install)
+├── CHANGELOG.md         ← version history
+├── LICENSE.txt          ← usage terms
+├── backend/             ← Laravel API (PHP 8.2+)
+│   ├── .env.example        copy to .env and fill in
+│   └── database/           migrations + seeders
+├── frontend/            ← Next.js app (Node 20+)
+│   └── .env.local.example  copy to .env.local and fill in
+└── docs/                ← Postman collection + deployment guide
+```
+
+## 🚀 Quick start
+
+1. Read **INSTALLATION.md** — it walks you through both apps step by step.
+2. Backend: `composer install`, configure `.env`, `php artisan migrate --seed`.
+3. Frontend: `npm install`, configure `.env.local`, `npm run dev`.
+
+## 🧰 Tech stack
+
+- **Backend:** Laravel 11, Sanctum auth, MySQL, Filament admin.
+- **Frontend:** Next.js 15, React 19, Tailwind CSS, TanStack Table, Tiptap.
+
+## 💬 Support
+
+For setup help, reach out through your purchase/support channel with your
+license key handy.
+
+---
+
+© {{YEAR}} eSawda. Licensed for use under the terms in LICENSE.txt.
