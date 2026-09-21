@@ -55,18 +55,18 @@ class UserAdminController extends Controller
     public function update(int $id, Request $request)
     {
         $data = $request->validate([
-            'name'             => ['sometimes', 'string', 'max:150'],
-            'email'            => ['sometimes', 'email', 'max:150'],
-            'phone'            => ['sometimes', 'nullable', 'string', 'max:30'],
-            'address'          => ['sometimes', 'nullable', 'string', 'max:255'],
-            'user_type'        => ['sometimes', 'in:user,admin'],
-            'group_id'         => ['sometimes', 'string', 'max:60'],
-            'status'           => ['sometimes', 'in:0,1'],
-            'post_policy'      => ['sometimes', 'in:inherit,free,blocked'],
+            'name' => ['sometimes', 'string', 'max:150'],
+            'email' => ['sometimes', 'email', 'max:150'],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
+            'address' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'user_type' => ['sometimes', 'in:user,admin'],
+            'group_id' => ['sometimes', 'string', 'max:60'],
+            'status' => ['sometimes', 'in:0,1'],
+            'post_policy' => ['sometimes', 'in:inherit,free,blocked'],
             // Shop fields
-            'shop_name'        => ['sometimes', 'nullable', 'string', 'max:150'],
-            'shop_address'     => ['sometimes', 'nullable', 'string', 'max:255'],
-            'shop_category'    => ['sometimes', 'nullable', 'string', 'max:100'],
+            'shop_name' => ['sometimes', 'nullable', 'string', 'max:150'],
+            'shop_address' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'shop_category' => ['sometimes', 'nullable', 'string', 'max:100'],
             'shop_description' => ['sometimes', 'nullable', 'string', 'max:2000'],
         ]);
 

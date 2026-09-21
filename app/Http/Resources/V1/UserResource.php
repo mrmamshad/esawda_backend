@@ -43,15 +43,16 @@ class UserResource extends BaseResource
             'documents' => (function () {
                 $docs = $this->shop_documents ?? [];
                 $storageBase = rtrim(config('app.url'), '/').'/storage/';
+
                 return [
-                    'nid'           => isset($docs['nid'])           ? $storageBase.$docs['nid']           : null,
+                    'nid' => isset($docs['nid']) ? $storageBase.$docs['nid'] : null,
                     'trade_licence' => isset($docs['trade_licence']) ? $storageBase.$docs['trade_licence'] : null,
                 ];
             })(),
-            'listings_total'   => $this->whenLoaded('posts', fn() => $this->listings_total ?? null, $this->listings_total ?? null),
-            'listings_active'  => $this->whenLoaded('posts', fn() => $this->listings_active ?? null, $this->listings_active ?? null),
-            'listings_pending' => $this->whenLoaded('posts', fn() => $this->listings_pending ?? null, $this->listings_pending ?? null),
-            'shop_status'      => $this->shop_status,
+            'listings_total' => $this->whenLoaded('posts', fn () => $this->listings_total ?? null, $this->listings_total ?? null),
+            'listings_active' => $this->whenLoaded('posts', fn () => $this->listings_active ?? null, $this->listings_active ?? null),
+            'listings_pending' => $this->whenLoaded('posts', fn () => $this->listings_pending ?? null, $this->listings_pending ?? null),
+            'shop_status' => $this->shop_status,
             'city' => $this->city,
             'country' => $this->country,
             'address' => $this->address,
