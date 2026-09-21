@@ -18,9 +18,13 @@ class BlogAdminController extends Controller
         }
 
         $rows = $q->paginate((int) min(100, max(1, (int) $request->query('per_page', 20))));
-        // Admin table shows a slug column — the table has none, derive it.
+        // Ensure a slug is always present for the admin table (older rows may
+        // predate the slug column) — fall back to a title-derived slug.
         $rows->getCollection()->transform(
-            fn ($b) => tap($b, fn ($b) => $b->setAttribute('slug', Str::slug((string) $b->title)))
+            fn ($b) => tap($b, fn ($b) => $b->setAttribute(
+                'slug',
+                $b->slug ?: Str::slug((string) $b->title)
+            ))
         );
 
         return $this->ok($rows);
@@ -30,20 +34,23 @@ class BlogAdminController extends Controller
     {
         $data = $request->validate([
             'title' => ['required', 'string', 'max:200'],
+            'slug' => ['nullable', 'string', 'max:200'],
             'description' => ['nullable', 'string'],
             'body' => ['nullable', 'string'],
             'tags' => ['nullable', 'string', 'max:500'],
             'image' => ['nullable', 'string', 'max:255'],
             'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'status' => ['nullable', 'in:publish,pending'],
+            // Matches the ad_blog.status enum column.
+            'status' => ['nullable', 'in:draft,published,unpublished'],
         ]);
 
         $blog = Blog::create([
             'title' => $data['title'],
+            'slug' => $this->resolveSlug($data['slug'] ?? null, $data['title']),
             'description' => $data['description'] ?? $data['body'] ?? null,
             'tags' => $data['tags'] ?? null,
             'image' => $this->storeImageFile($request) ?? $this->cleanImageUrl($data['image'] ?? null),
-            'status' => $data['status'] ?? 'publish',
+            'status' => $data['status'] ?? 'published',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -61,17 +68,22 @@ class BlogAdminController extends Controller
         $blog = Blog::findOrFail($id);
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:200'],
+            'slug' => ['sometimes', 'nullable', 'string', 'max:200'],
             'description' => ['sometimes', 'nullable', 'string'],
             'body' => ['sometimes', 'nullable', 'string'],
             'tags' => ['sometimes', 'nullable', 'string', 'max:500'],
             'image' => ['sometimes', 'nullable', 'string', 'max:255'],
             'image_file' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'status' => ['sometimes', 'in:publish,pending'],
+            // Matches the ad_blog.status enum column.
+            'status' => ['sometimes', 'in:draft,published,unpublished'],
         ]);
 
         $fill = [];
         if (array_key_exists('title', $data)) {
             $fill['title'] = $data['title'];
+        }
+        if (array_key_exists('slug', $data)) {
+            $fill['slug'] = $this->resolveSlug($data['slug'], $data['title'] ?? $blog->title);
         }
         if (array_key_exists('description', $data) || array_key_exists('body', $data)) {
             $fill['description'] = $data['description'] ?? $data['body'] ?? null;
@@ -110,6 +122,14 @@ class BlogAdminController extends Controller
         $blog->delete();
 
         return $this->ok(['message' => 'Blog deleted.']);
+    }
+
+    /** Use the supplied slug when present, otherwise derive one from the title. */
+    private function resolveSlug(?string $slug, ?string $title): string
+    {
+        $slug = Str::slug((string) ($slug ?? ''));
+
+        return $slug !== '' ? $slug : Str::slug((string) $title);
     }
 
     /** Store an uploaded cover under public/blog, returning the filename. */

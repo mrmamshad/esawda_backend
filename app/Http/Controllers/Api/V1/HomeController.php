@@ -53,7 +53,7 @@ class HomeController extends Controller
                     Testimonial::query()->orderByDesc('id')->limit(3)->get()
                 )->resolve(),
                 'blogs' => BlogResource::collection(
-                    Blog::query()->where('status', 'publish')->with(['author', 'categories'])
+                    Blog::query()->where('status', 'published')->with(['author', 'categories'])
                         ->orderByDesc('id')->limit(3)->get()
                 )->resolve(),
             ];

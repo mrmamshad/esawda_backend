@@ -35,7 +35,7 @@ class HomeController extends Controller
             'item' => $this->listing->promoted(8),   // premium ads
             'item2' => Post::active()->orderByDesc('id')->limit(8)->get(), // latest ads
             'testimonials' => Testimonial::orderByDesc('id')->limit(6)->get(),
-            'recent_blog' => Blog::where('status', 'publish')
+            'recent_blog' => Blog::where('status', 'published')
                 ->orderByDesc('created_at')->limit(3)->get(),
             'plans' => Plan::where('status', 1)->get(),
             'sub_types' => [],

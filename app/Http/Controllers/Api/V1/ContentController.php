@@ -87,7 +87,7 @@ class ContentController extends Controller
 
     public function blogs(Request $request)
     {
-        $q = Blog::query()->where('status', 'publish')->with(['author', 'categories'])->orderByDesc('id');
+        $q = Blog::query()->where('status', 'published')->with(['author', 'categories'])->orderByDesc('id');
 
         if ($needle = trim((string) $request->query('q', ''))) {
             $q->where(fn ($s) => $s->where('title', 'like', "%{$needle}%")
@@ -125,7 +125,7 @@ class ContentController extends Controller
     {
         $id = (int) explode('-', $idSlug, 2)[0];
         abort_if($id <= 0, 404);
-        $blog = Blog::with(['author', 'categories'])->where('id', $id)->where('status', 'publish')->firstOrFail();
+        $blog = Blog::with(['author', 'categories'])->where('id', $id)->where('status', 'published')->firstOrFail();
 
         return $this->ok(new BlogResource($blog));
     }
