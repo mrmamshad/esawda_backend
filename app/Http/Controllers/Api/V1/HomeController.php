@@ -38,7 +38,7 @@ class HomeController extends Controller
                 'settings' => $this->settings(),
                 'categories' => CategoryResource::collection($this->categories())->resolve(),
                 'sections' => [
-                    'featured' => $this->conditioned(fn ($q) => $q->featured(), 6),
+                    'featured' => $this->conditioned(fn ($q) => $q->featured(), 12),
                     'urgent' => $this->conditioned(fn ($q) => $q->where('urgent', '1'), 8),
                     'last24h' => $this->conditioned(
                         fn ($q) => $q->where('created_at', '>=', now()->subHours(24)), 8
