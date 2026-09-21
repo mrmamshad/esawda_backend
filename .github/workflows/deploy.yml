@@ -44,8 +44,14 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            set -eo pipefail
             cd /home/esawda-api/htdocs/api.esawda.com
-            git pull origin main
+            # Hard-sync to origin/main. A plain `git pull` could fail silently
+            # (no `set -e` previously) and leave the box on stale code while the
+            # job still reported success — fetch+reset is deterministic.
+            git fetch origin main
+            git reset --hard origin/main
+            git log --oneline -1
             composer install --no-dev --optimize-autoloader
             php artisan migrate --force
             php artisan config:cache
