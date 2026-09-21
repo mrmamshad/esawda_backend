@@ -54,22 +54,59 @@ class DashboardController extends Controller
 
             $delta = fn ($curr, $prev) => $prev > 0 ? (($curr - $prev) / $prev) * 100 : ($curr > 0 ? 100 : 0);
 
+            // Aggregate both windows (current + previous) in a single pass per
+            // table using conditional SUM(CASE …). This collapses what used to
+            // be 12 separate COUNT/SUM round-trips into 3 grouped queries — a
+            // meaningful win on the admin dashboard's cold/refresh path.
+            $inCurr = 'created_at BETWEEN ? AND ?';
+            $inPrev = 'created_at BETWEEN ? AND ?';
+            $winBinds = [$currStart, $currEnd, $prevStart, $prevEnd];
+
+            // Posts: all five status buckets for the current window + total for
+            // the previous window (for the ads trend), in one query.
+            $post = Post::query()->selectRaw(
+                "SUM(CASE WHEN {$inCurr} THEN 1 ELSE 0 END) AS ads_total,
+                 SUM(CASE WHEN {$inCurr} AND status = 'active' AND hide = '0' THEN 1 ELSE 0 END) AS ads_active,
+                 SUM(CASE WHEN {$inCurr} AND status = 'pending' THEN 1 ELSE 0 END) AS ads_pending,
+                 SUM(CASE WHEN {$inCurr} AND status = 'expire' THEN 1 ELSE 0 END) AS ads_expired,
+                 SUM(CASE WHEN {$inPrev} THEN 1 ELSE 0 END) AS ads_prev",
+                [$currStart, $currEnd, $currStart, $currEnd, $currStart, $currEnd, $currStart, $currEnd, $prevStart, $prevEnd]
+            )->first();
+
+            // Transactions: count + success count + revenue for the current
+            // window, plus prev-window count + revenue for trends, in one query.
+            $tx = Transaction::query()->selectRaw(
+                "SUM(CASE WHEN {$inCurr} THEN 1 ELSE 0 END) AS tx_total,
+                 SUM(CASE WHEN {$inCurr} AND status = 'success' THEN 1 ELSE 0 END) AS tx_success,
+                 SUM(CASE WHEN {$inCurr} AND status = 'success' THEN amount ELSE 0 END) AS revenue_total,
+                 SUM(CASE WHEN {$inPrev} THEN 1 ELSE 0 END) AS tx_prev,
+                 SUM(CASE WHEN {$inPrev} AND status = 'success' THEN amount ELSE 0 END) AS revenue_prev",
+                [$currStart, $currEnd, $currStart, $currEnd, $currStart, $currEnd, $prevStart, $prevEnd, $prevStart, $prevEnd]
+            )->first();
+
+            // Users: current + previous window counts in one query.
+            $usr = User::query()->selectRaw(
+                "SUM(CASE WHEN {$inCurr} THEN 1 ELSE 0 END) AS users_curr,
+                 SUM(CASE WHEN {$inPrev} THEN 1 ELSE 0 END) AS users_prev",
+                $winBinds
+            )->first();
+
             $counts = [
-                'users' => User::whereBetween('created_at', [$currStart, $currEnd])->count(),
-                'ads_total' => Post::whereBetween('created_at', [$currStart, $currEnd])->count(),
-                'ads_active' => Post::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'active')->where('hide', '0')->count(),
-                'ads_pending' => Post::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'pending')->count(),
-                'ads_expired' => Post::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'expire')->count(),
-                'tx_total' => Transaction::whereBetween('created_at', [$currStart, $currEnd])->count(),
-                'tx_success' => Transaction::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'success')->count(),
-                'revenue_total' => (float) Transaction::whereBetween('created_at', [$currStart, $currEnd])->where('status', 'success')->sum('amount'),
+                'users' => (int) ($usr->users_curr ?? 0),
+                'ads_total' => (int) ($post->ads_total ?? 0),
+                'ads_active' => (int) ($post->ads_active ?? 0),
+                'ads_pending' => (int) ($post->ads_pending ?? 0),
+                'ads_expired' => (int) ($post->ads_expired ?? 0),
+                'tx_total' => (int) ($tx->tx_total ?? 0),
+                'tx_success' => (int) ($tx->tx_success ?? 0),
+                'revenue_total' => (float) ($tx->revenue_total ?? 0),
             ];
 
             $trend = [
-                'users_delta' => round($delta($counts['users'], User::whereBetween('created_at', [$prevStart, $prevEnd])->count()), 1),
-                'ads_delta' => round($delta($counts['ads_total'], Post::whereBetween('created_at', [$prevStart, $prevEnd])->count()), 1),
-                'revenue_delta' => round($delta($counts['revenue_total'], (float) Transaction::whereBetween('created_at', [$prevStart, $prevEnd])->where('status', 'success')->sum('amount')), 1),
-                'tx_delta' => round($delta($counts['tx_total'], Transaction::whereBetween('created_at', [$prevStart, $prevEnd])->count()), 1),
+                'users_delta' => round($delta($counts['users'], (int) ($usr->users_prev ?? 0)), 1),
+                'ads_delta' => round($delta($counts['ads_total'], (int) ($post->ads_prev ?? 0)), 1),
+                'revenue_delta' => round($delta($counts['revenue_total'], (float) ($tx->revenue_prev ?? 0)), 1),
+                'tx_delta' => round($delta($counts['tx_total'], (int) ($tx->tx_prev ?? 0)), 1),
             ];
 
             return [
