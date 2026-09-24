@@ -18,6 +18,7 @@ use App\Services\AdStatsService;
 use App\Services\Mail\MailService;
 use App\Services\PostingPolicy;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -191,9 +192,12 @@ class AdMineController extends Controller
             default => abort(422, 'Unknown action.'),
         };
 
-        // Revalidate the frontend homepage so visibility changes (hide,
-        // unhide, restock, sold-out, remove) reflect immediately.
+        // Bust the cached homepage payload and revalidate the frontend so
+        // visibility changes (hide, unhide, restock, sold-out, remove) reflect
+        // immediately — otherwise a sold/hidden item lingers on the public
+        // listings until the 120s home.payload cache expires.
         if (in_array($action, ['hide', 'unhide', 'restock', 'sold-out', 'remove'], true)) {
+            Cache::forget('home.payload');
             RevalidateFrontendJob::dispatch();
         }
 
