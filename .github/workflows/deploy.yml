@@ -45,7 +45,17 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -eo pipefail
-            cd /home/esawda-api/htdocs/api.esawda.com
+            APP_DIR=/home/esawda-api/htdocs/api.esawda.com
+            cd "$APP_DIR"
+            # Guard against a mixed-ownership .git tree (e.g. a manual `sudo`
+            # deploy leaving root-owned objects), which otherwise makes git bail
+            # out with "Permission denied"/"dubious ownership" and exit 128 —
+            # silently shipping stale code. Mark the repo safe and, if we happen
+            # to have passwordless sudo, repair ownership back to the app user.
+            git config --global --add safe.directory "$APP_DIR" || true
+            if sudo -n true 2>/dev/null; then
+              sudo -n chown -R esawda-api:esawda-api "$APP_DIR/.git" || true
+            fi
             # Hard-sync to origin/main. A plain `git pull` could fail silently
             # (no `set -e` previously) and leave the box on stale code while the
             # job still reported success — fetch+reset is deterministic.
@@ -64,7 +74,6 @@ jobs:
             #    can never silently drift from the real app path. Each sudo is
             #    guarded: if the deploy user lacks passwordless sudo the code
             #    still ships — the worker step is only skipped with a warning.
-            APP_DIR=/home/esawda-api/htdocs/api.esawda.com
             for unit in esawda-queue esawda-scheduler; do
               if sudo -n test -f "$APP_DIR/deploy/$unit.service"; then
                 sudo -n cp "$APP_DIR/deploy/$unit.service" "/etc/systemd/system/$unit.service" \
