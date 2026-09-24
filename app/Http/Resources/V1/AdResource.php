@@ -30,6 +30,7 @@ class AdResource extends BaseResource
             'negotiable' => $this->bool($this->negotiable),
             'condition' => $this->condition ?? 'used',   // 'new' | 'used'
             'status' => $this->status?->value,        // draft|pending|active|sold_out|removed|expire|rejected
+            'hide' => $this->bool($this->hide),        // owner-hidden from public listings
             'thumbnail' => $thumb,
             'featured' => $this->bool($this->featured),
             'urgent' => $this->bool($this->urgent),
