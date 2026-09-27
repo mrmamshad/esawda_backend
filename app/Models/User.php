@@ -122,6 +122,23 @@ class User extends Model implements Authenticatable
     }
 
     /**
+     * A "limited" admin is an admin whose `admin_role` is explicitly 'limited'.
+     * They keep admin access but the API + UI hide the sensitive Users and
+     * Transactions areas from them. Everyone else (admin_role null/'full')
+     * remains a full admin, preserving backward compatibility.
+     */
+    public function isLimitedAdmin(): bool
+    {
+        return $this->isAdmin() && (string) ($this->admin_role ?? 'full') === 'limited';
+    }
+
+    public function getAdminRoleAttribute($value): string
+    {
+        // Only meaningful for admins; non-admins always report 'full' (unused).
+        return $this->isAdmin() ? ((string) ($value ?: 'full')) : 'full';
+    }
+
+    /**
      * A user becomes a "shop" (corporate panel) only when they have opened
      * a shop via onboarding (user_type = seller). Regular buyers who merely
      * purchase products stay on the lightweight /dashboard — they never

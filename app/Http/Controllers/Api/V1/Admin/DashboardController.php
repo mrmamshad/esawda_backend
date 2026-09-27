@@ -43,7 +43,7 @@ class DashboardController extends Controller
         // stable for a short time and don't recompute on every poll.
         $cacheKey = 'admin.dashboard:'.$range.':'.$fromDate->format('YmdH').':'.$toDate->format('YmdH');
 
-        return $this->ok(Cache::remember($cacheKey, 300, function () use ($range, $fromDate, $toDate) {
+        $payload = Cache::remember($cacheKey, 300, function () use ($range, $fromDate, $toDate) {
             $currStart = $fromDate;
             $currEnd = $toDate;
 
@@ -135,7 +135,33 @@ class DashboardController extends Controller
                     'transactions' => $this->bucketed('transactions', $currStart, $currEnd),
                 ],
             ];
-        }));
+        });
+
+        // Limited admins must not see Users / Transactions / Revenue figures.
+        if (optional($request->user())->isLimitedAdmin()) {
+            $payload = $this->redactForLimitedAdmin($payload);
+        }
+
+        return $this->ok($payload);
+    }
+
+    /**
+     * Strip user-, transaction- and revenue-related figures from the dashboard
+     * payload so a limited admin only sees product/order-safe stats.
+     */
+    private function redactForLimitedAdmin(array $p): array
+    {
+        foreach (['users', 'tx_total', 'tx_success', 'revenue_total'] as $k) {
+            unset($p['counts'][$k]);
+        }
+        foreach (['users_delta', 'revenue_delta', 'tx_delta'] as $k) {
+            unset($p['trend'][$k]);
+        }
+        unset($p['recent']['users'], $p['recent']['transactions']);
+        unset($p['revenue_series'], $p['user_growth']);
+        unset($p['window']['revenue'], $p['window']['users'], $p['window']['transactions']);
+
+        return $p;
     }
 
     /** Resolve the filter into a concrete [from, to] Carbon window. */

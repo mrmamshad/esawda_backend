@@ -22,6 +22,7 @@ class UserResource extends BaseResource
             'phone' => $this->phone,
             'user_type' => $this->user_type,
             'is_admin' => $this->isAdmin(),
+            'admin_role' => $this->isAdmin() ? ($this->isLimitedAdmin() ? 'limited' : 'full') : null,
             'is_shop' => $this->isShop(),
             'group_id' => $this->group_id,
             'plan_id' => $this->plan_id ? (int) $this->plan_id : null,

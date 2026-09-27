@@ -205,17 +205,20 @@ Route::prefix('v1')->group(function () {
         Route::put('ads/placements/{id}', [AdPlacementAdminController::class, 'update'])->whereNumber('id');
         Route::delete('ads/placements/{id}', [AdPlacementAdminController::class, 'destroy'])->whereNumber('id');
 
-        Route::get('users', [UserAdminController::class, 'index']);
-        Route::get('users/{id}', [UserAdminController::class, 'show'])->whereNumber('id');
-        Route::patch('users/{id}', [UserAdminController::class, 'update'])->whereNumber('id');
-        Route::post('users/{id}/ban', [UserAdminController::class, 'ban'])->whereNumber('id');
-        Route::post('users/{id}/unban', [UserAdminController::class, 'unban'])->whereNumber('id');
-        Route::post('users/{id}/verify-shop', [UserAdminController::class, 'verifyShop'])->whereNumber('id');
-        Route::post('users/{id}/unverify-shop', [UserAdminController::class, 'unverifyShop'])->whereNumber('id');
-        Route::post('users/{id}/activate-shop', [UserAdminController::class, 'activateShop'])->whereNumber('id');
-        Route::post('users/{id}/deactivate-shop', [UserAdminController::class, 'deactivateShop'])->whereNumber('id');
-        Route::post('users/{id}/reset-password', [UserAdminController::class, 'resetPassword'])->whereNumber('id');
-        Route::delete('users/{id}', [UserAdminController::class, 'destroy'])->whereNumber('id');
+        // Users — restricted from limited admins.
+        Route::middleware('admin.full')->group(function () {
+            Route::get('users', [UserAdminController::class, 'index']);
+            Route::get('users/{id}', [UserAdminController::class, 'show'])->whereNumber('id');
+            Route::patch('users/{id}', [UserAdminController::class, 'update'])->whereNumber('id');
+            Route::post('users/{id}/ban', [UserAdminController::class, 'ban'])->whereNumber('id');
+            Route::post('users/{id}/unban', [UserAdminController::class, 'unban'])->whereNumber('id');
+            Route::post('users/{id}/verify-shop', [UserAdminController::class, 'verifyShop'])->whereNumber('id');
+            Route::post('users/{id}/unverify-shop', [UserAdminController::class, 'unverifyShop'])->whereNumber('id');
+            Route::post('users/{id}/activate-shop', [UserAdminController::class, 'activateShop'])->whereNumber('id');
+            Route::post('users/{id}/deactivate-shop', [UserAdminController::class, 'deactivateShop'])->whereNumber('id');
+            Route::post('users/{id}/reset-password', [UserAdminController::class, 'resetPassword'])->whereNumber('id');
+            Route::delete('users/{id}', [UserAdminController::class, 'destroy'])->whereNumber('id');
+        });
 
         Route::get('ads', [AdAdminController::class, 'index']);
         Route::get('ads/{id}', [AdAdminController::class, 'show'])->whereNumber('id');
@@ -232,10 +235,13 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('plans', PlanAdminController::class);
         Route::apiResource('blogs', BlogAdminController::class);
 
-        Route::get('transactions', [TransactionAdminController::class, 'index']);
-        Route::get('transactions/{id}', [TransactionAdminController::class, 'show'])->whereNumber('id');
-        Route::post('transactions/{id}/refund', [TransactionAdminController::class, 'refund'])->whereNumber('id');
-        Route::post('transactions/{id}/mark-paid', [TransactionAdminController::class, 'markPaid'])->whereNumber('id');
+        // Transactions — restricted from limited admins.
+        Route::middleware('admin.full')->group(function () {
+            Route::get('transactions', [TransactionAdminController::class, 'index']);
+            Route::get('transactions/{id}', [TransactionAdminController::class, 'show'])->whereNumber('id');
+            Route::post('transactions/{id}/refund', [TransactionAdminController::class, 'refund'])->whereNumber('id');
+            Route::post('transactions/{id}/mark-paid', [TransactionAdminController::class, 'markPaid'])->whereNumber('id');
+        });
 
         Route::get('orders', [OrderAdminController::class, 'index']);
         Route::get('orders/summary', [OrderAdminController::class, 'summary']);

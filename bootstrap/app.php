@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureFullAdmin;
 use App\Http\Middleware\EnsureLegacyLogin;
 use App\Http\Middleware\SetLocale;
 use App\Providers\AuthServiceProvider;
@@ -36,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'quickad.auth' => EnsureLegacyLogin::class,
             'admin' => EnsureAdmin::class,
+            'admin.full' => EnsureFullAdmin::class,
         ]);
         $middleware->web(append: [SetLocale::class]);
     })
