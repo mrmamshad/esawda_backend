@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\Admin\PlanAdminController;
 use App\Http\Controllers\Api\V1\Admin\PremiumUpgradeAdminController;
 use App\Http\Controllers\Api\V1\Admin\SettingsAdminController;
 use App\Http\Controllers\Api\V1\Admin\SubCategoryAdminController;
+use App\Http\Controllers\Api\V1\Admin\TestimonialAdminController;
 use App\Http\Controllers\Api\V1\Admin\TransactionAdminController;
 use App\Http\Controllers\Api\V1\Admin\UserAdminController;
 use App\Http\Controllers\Api\V1\AdMineController;
@@ -234,6 +235,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('subcategories', SubCategoryAdminController::class);
         Route::apiResource('plans', PlanAdminController::class);
         Route::apiResource('blogs', BlogAdminController::class);
+        Route::apiResource('testimonials', TestimonialAdminController::class);
 
         // Transactions — restricted from limited admins.
         Route::middleware('admin.full')->group(function () {
