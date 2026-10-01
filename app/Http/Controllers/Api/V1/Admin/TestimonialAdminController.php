@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\RevalidateFrontendJob;
 use App\Models\Testimonial;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -38,6 +40,8 @@ class TestimonialAdminController extends Controller
             'content' => $data['content'],
             'image' => $this->storeImageFile($request) ?? $this->cleanImage($data['image'] ?? null),
         ]);
+
+        $this->bustHomeCaches();
 
         return $this->created($testimonial->fresh());
     }
@@ -81,6 +85,8 @@ class TestimonialAdminController extends Controller
             $testimonial->fill($fill)->save();
         }
 
+        $this->bustHomeCaches();
+
         return $this->ok($testimonial->fresh());
     }
 
@@ -90,7 +96,21 @@ class TestimonialAdminController extends Controller
         $this->deleteLocalImage($testimonial->image);
         $testimonial->delete();
 
+        $this->bustHomeCaches();
+
         return $this->ok(['message' => 'Testimonial deleted.']);
+
+    }
+
+    /**
+     * Homepage shows testimonials from the cached `home.payload` plus
+     * Next.js ISR — bust both immediately so admin edits appear at once
+     * instead of waiting out the cache timers.
+     */
+    private function bustHomeCaches(): void
+    {
+        Cache::forget('home.payload');
+        RevalidateFrontendJob::dispatch();
     }
 
     /** Store an uploaded author photo under public/testimonials, returning the bare filename (legacy format). */
