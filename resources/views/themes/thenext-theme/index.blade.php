@@ -112,7 +112,7 @@
                 <div class="listings-container grid-layout margin-top-35">
                     <div class="row" style="width: 100%;">
                         @foreach($item ?? [] as $item)
-                            <div class="col-xl-4">
+                            <div class="col-xl-3 col-lg-4 col-sm-6 col-12">
                                 <div class='feat_property @if((data_get($item ?? [], 'highlight', ''))=="1") highlight @endif'>
                                     <div class="thumb">
                                         <img class="img-whp lazy-load" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAANSURBVBhXYzh8+PB/AAffA0nNPuCLAAAAAElFTkSuQmCC"  data-original="{{ $site_url ?? '' }}storage/products/thumb/{{ data_get($item ?? [], 'picture', '') }}" alt="{{ data_get($item ?? [], 'product_name', '') }}">
