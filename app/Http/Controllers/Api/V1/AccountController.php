@@ -9,6 +9,7 @@ use App\Http\Resources\V1\TransactionResource;
 use App\Http\Resources\V1\UserResource;
 use App\Models\Order;
 use App\Models\Transaction;
+use App\Services\ProfileImageOptimizerService;
 use App\Support\AdImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -140,7 +141,7 @@ class AccountController extends Controller
     public function uploadAvatar(Request $request)
     {
         $data = $request->validate([
-            'avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
         ]);
 
         $user = $request->user();
@@ -149,6 +150,7 @@ class AccountController extends Controller
         // double-prefixed and 404'd; storing at disk root 404'd too).
         $name = Str::random(32).'.'.$data['avatar']->getClientOriginalExtension();
         $data['avatar']->storeAs('profile', $name, 'public');
+        app(ProfileImageOptimizerService::class)->optimize('profile/'.$name, 512, 512);
 
         // Best-effort cleanup of the previous file (skip default seeds).
         if ($user->image && !str_starts_with($user->image, 'default_')) {
@@ -175,7 +177,7 @@ class AccountController extends Controller
     public function uploadCover(Request $request)
     {
         $data = $request->validate([
-            'cover' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'cover' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
         ]);
 
         $user = $request->user();
@@ -183,6 +185,7 @@ class AccountController extends Controller
         // Store inside the profile/ folder; keep only the bare filename in DB
         // — resources already prepend /storage/profile/.
         $data['cover']->storeAs('profile', $name, 'public');
+        app(ProfileImageOptimizerService::class)->optimize('profile/'.$name, 2000, 1000);
 
         if ($user->cover && !str_starts_with($user->cover, 'default_')) {
             Storage::disk('public')->delete('profile/'.$user->cover);
@@ -208,12 +211,13 @@ class AccountController extends Controller
     public function uploadShopBanner(Request $request)
     {
         $data = $request->validate([
-            'banner' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'banner' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
         ]);
 
         $user = $request->user();
         $name = Str::random(32).'.'.$data['banner']->getClientOriginalExtension();
         $data['banner']->storeAs('profile', $name, 'public');
+        app(ProfileImageOptimizerService::class)->optimize('profile/'.$name, 6000, 2000);
 
         if ($user->shop_banner) {
             Storage::disk('public')->delete('profile/'.$user->shop_banner);

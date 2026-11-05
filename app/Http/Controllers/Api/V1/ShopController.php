@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\UserResource;
 use App\Models\User;
 use App\Services\Mail\MailService;
+use App\Services\ProfileImageOptimizerService;
 use App\Services\ShopCategoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -25,6 +26,7 @@ class ShopController extends Controller
 {
     public function __construct(
         private readonly MailService $mail,
+        private readonly ProfileImageOptimizerService $imageOptimizer,
     ) {}
 
     /**
@@ -52,9 +54,9 @@ class ShopController extends Controller
             'documents' => ['nullable', 'array'],
             'documents.nid' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
             'documents.trade_licence' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'cover' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'banner' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
+            'cover' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
+            'banner' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
         ]);
 
         $user = $request->user();
@@ -105,11 +107,18 @@ class ShopController extends Controller
 
         // Optional profile picture / cover / banner — same pattern as the
         // dedicated upload endpoints, but bundled so the apply flow is one
-        // round-trip.
+        // round-trip. Every image is downscaled before the record is saved.
+        $limits = [
+            'avatar' => [512, 512],
+            'cover' => [2000, 1000],
+            'banner' => [6000, 2000],
+        ];
         foreach (['avatar' => 'image', 'cover' => 'cover', 'banner' => 'shop_banner'] as $input => $column) {
             if ($request->hasFile($input)) {
                 $name = Str::random(32).'.'.$data[$input]->getClientOriginalExtension();
                 $data[$input]->storeAs('profile', $name, 'public');
+                [$maxWidth, $maxHeight] = $limits[$input];
+                $this->imageOptimizer->optimize('profile/'.$name, $maxWidth, $maxHeight);
                 $fill[$column] = $name;
             }
         }
