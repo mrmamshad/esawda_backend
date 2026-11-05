@@ -83,10 +83,14 @@ class OptimizeProfileImages extends Command
             }
 
             if ($this->option('backup')) {
-                $disk->makeDirectory('profile-originals');
-                $backup = 'profile-originals/'.$name;
-                if (!$disk->exists($backup)) {
-                    $disk->copy($relative, $backup);
+                $backupDir = storage_path('app/private/backups/profile-originals');
+                if (!is_dir($backupDir)) {
+                    @mkdir($backupDir, 0775, true);
+                }
+
+                $backupPath = $backupDir.'/'.$name;
+                if (!is_file($backupPath)) {
+                    copy($path, $backupPath);
                 }
             }
 
